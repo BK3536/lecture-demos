@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+<link rel="stylesheet" href="../theme.css">
+<title>CFAR Detection</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="../theme.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Pretendard', 'Inter', system-ui, -apple-system, sans-serif; background: #111827; color: #d1d5db; }
+  .header { padding: 1.2rem 2rem; background: #1f2937; border-bottom: 1px solid #374151; }
+  .header h1 { font-size: 1.4rem; font-weight: 600; }
+  .header p { font-size: 0.85rem; color: #9ca3af; margin-top: 0.3rem; }
+  .container { display: grid; grid-template-columns: 280px 1fr; height: calc(100vh - 80px); }
+  .controls { padding: 1.2rem; background: #1f2937; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; }
+  .control-group { background: #111827; border-radius: 8px; padding: 1rem; }
+  .control-group h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 0.7rem; }
+  label { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin-bottom: 0.3rem; }
+  label span.val { color: #60a5fa; font-family: monospace; }
+  input[type=range] { width: 100%; accent-color: #60a5fa; margin-bottom: 0.5rem; }
+  select { width: 100%; padding: 0.4rem; background: #1f2937; color: #d1d5db; border: 1px solid #374151; border-radius: 6px; font-size: 0.85rem; margin-bottom: 0.5rem; }
+  .plots { padding: 1rem; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 0.5rem; }
+  .plot { background: #1f2937; border-radius: 8px; }
+  .info-box { background: #111827; border-radius: 8px; padding: 0.8rem 1rem; font-size: 0.8rem; line-height: 1.6; color: #9ca3af; }
+  .info-box code { color: #60a5fa; }
+  .metric { display: flex; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid #1f2937; font-size: 0.82rem; }
+  .metric:last-child { border-bottom: none; }
+  .metric .label { color: #9ca3af; }
+  .metric .value { color: #60a5fa; font-family: monospace; font-weight: 600; }
+  .btn { width: 100%; padding: 0.5rem; background: #60a5fa; color: #111827; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.85rem; }
+  .btn:hover { background: #7dd3fc; }
+</style>
+</head>
+<body>
+<div class="header">
+  <a class="back-link" href="../index.html" title="All demos">&larr;</a>
+  <div class="header-title">
+    <h1>CFAR Detection</h1>
+    <p>Richards — Constant False Alarm Rate Detectors</p>
+  </div>
+  <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"></button>
+</div>
+<div class="container">
+  <div class="controls">
+    <div class="control-group">
+      <h3>CFAR Type</h3>
+      <select id="cfar-type">
+        <option value="CA">CA-CFAR (Cell Averaging)</option>
+        <option value="GO">GO-CFAR (Greatest Of)</option>
+        <option value="SO">SO-CFAR (Smallest Of)</option>
+        <option value="OS">OS-CFAR (Ordered Statistic)</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <h3>CFAR Parameters</h3>
+      <label>Reference Cells (each side) <span class="val" id="v-ref">16</span></label>
+      <input type="range" id="ref" min="4" max="32" step="2" value="16">
+      <label>Guard Cells (each side) <span class="val" id="v-guard">4</span></label>
+      <input type="range" id="guard" min="1" max="10" step="1" value="4">
+      <label>P<sub>fa</sub> (log<sub>10</sub>) <span class="val" id="v-pfa">-4</span></label>
+      <input type="range" id="pfa" min="-8" max="-1" step="0.5" value="-4">
+      <label id="os-label" style="display:none">OS rank k <span class="val" id="v-os-k">24</span></label>
+      <input type="range" id="os-k" min="1" max="32" step="1" value="24" style="display:none">
+    </div>
+    <div class="control-group">
+      <h3>Scenario</h3>
+      <label>Number of targets <span class="val" id="v-ntgt">3</span></label>
+      <input type="range" id="ntgt" min="1" max="6" step="1" value="3">
+      <label>Clutter Edge? <span class="val" id="v-clutter"></span></label>
+      <select id="clutter">
+        <option value="none">No Clutter Edge</option>
+        <option value="step">Step Clutter (+15 dB)</option>
+        <option value="slope">Sloped Clutter</option>
+      </select>
+      <label>Noise floor (dB) <span class="val" id="v-noise">0</span></label>
+      <input type="range" id="noise" min="-10" max="10" step="1" value="0">
+      <button class="btn" onclick="regenerate()">Regenerate Scene</button>
+    </div>
+    <div class="control-group">
+      <h3>Results</h3>
+      <div class="metric"><span class="label">Targets present</span><span class="value" id="m-present">—</span></div>
+      <div class="metric"><span class="label">Detections</span><span class="value" id="m-det">—</span></div>
+      <div class="metric"><span class="label">False alarms</span><span class="value" id="m-fa">—</span></div>
+      <div class="metric"><span class="label">Threshold factor &alpha;</span><span class="value" id="m-alpha">—</span></div>
+    </div>
+    <div class="info-box">
+      <strong>CA-CFAR Threshold</strong><br>
+      <code>T = &alpha; &middot; (1/2N) &Sigma; x<sub>ref</sub></code><br><br>
+      <code>&alpha; = N(P<sub>fa</sub><sup>-1/N</sup> - 1)</code><br><br>
+      <strong>GO-CFAR:</strong> max(lead,lag) &mdash; good for clutter edges<br>
+      <strong>SO-CFAR:</strong> min(lead,lag) &mdash; good for close targets<br>
+      <strong>OS-CFAR:</strong> k-th sorted value &mdash; robust to outliers
+    </div>
+  </div>
+  <div class="plots">
+    <div class="plot" id="plot-signal"></div>
+    <div class="plot" id="plot-window"></div>
+    <div class="plot" id="plot-threshold"></div>
+    <div class="plot" id="plot-compare"></div>
+  </div>
+</div>
+<script>
+var _t=THEMES[curTheme];var plotBg=_t.plotBg,paperBg=_t.paperBg,gridColor=_t.gridColor,textColor=_t.textColor;
+var lo={paper_bgcolor:paperBg,plot_bgcolor:plotBg,font:{color:textColor,size:11},margin:{t:40,r:16,b:40,l:50},xaxis:{gridcolor:gridColor,zerolinecolor:_t.zeroLine},yaxis:{gridcolor:gridColor,zerolinecolor:_t.zeroLine}};
+
+const NCELLS = 512;
+let signal, targets;
+
+function expRand() { return -Math.log(1 - Math.random()); }
+
+function generateScene() {
+  const nTgt = +document.getElementById('ntgt').value;
+  const clutterType = document.getElementById('clutter').value;
+  const noiseFloor = +document.getElementById('noise').value;
+
+  signal = new Float64Array(NCELLS);
+  targets = [];
+
+  // Exponential noise (square-law detected)
+  const noiseScale = Math.pow(10, noiseFloor / 10);
+  for (let i = 0; i < NCELLS; i++) signal[i] = noiseScale * expRand();
+
+  // Clutter
+  if (clutterType === 'step') {
+    for (let i = Math.floor(NCELLS * 0.6); i < NCELLS; i++) signal[i] *= 30;
+  } else if (clutterType === 'slope') {
+    for (let i = Math.floor(NCELLS * 0.4); i < NCELLS; i++) {
+      const ramp = 1 + 20 * (i - NCELLS * 0.4) / (NCELLS * 0.6);
+      signal[i] *= ramp;
+    }
+  }
+
+  // Targets
+  const spacing = Math.floor(NCELLS / (nTgt + 2));
+  for (let t = 0; t < nTgt; t++) {
+    const pos = spacing * (t + 1) + Math.floor(Math.random() * 20 - 10);
+    const amp = noiseScale * (20 + Math.random() * 30);
+    targets.push({ pos, amp });
+    signal[pos] += amp;
+    if (Math.random() > 0.5 && t > 0) signal[pos + 1] += amp * 0.3; // occasional second cell
+  }
+}
+
+function cfarThreshold(type, refCells, guardCells, pfa, osK) {
+  const N = 2 * refCells;
+  const alpha = N * (Math.pow(pfa, -1 / N) - 1);
+
+  const threshold = new Float64Array(NCELLS);
+  const detections = [];
+  const margin = refCells + guardCells;
+
+  for (let i = margin; i < NCELLS - margin; i++) {
+    const lead = [], lag = [];
+    for (let j = 1; j <= refCells; j++) {
+      lag.push(signal[i - guardCells - j]);
+      lead.push(signal[i + guardCells + j]);
+    }
+
+    let noiseEst;
+    switch (type) {
+      case 'CA':
+        noiseEst = (lead.reduce((a, b) => a + b, 0) + lag.reduce((a, b) => a + b, 0)) / N;
+        break;
+      case 'GO':
+        noiseEst = Math.max(
+          lead.reduce((a, b) => a + b, 0) / refCells,
+          lag.reduce((a, b) => a + b, 0) / refCells
+        );
+        break;
+      case 'SO':
+        noiseEst = Math.min(
+          lead.reduce((a, b) => a + b, 0) / refCells,
+          lag.reduce((a, b) => a + b, 0) / refCells
+        );
+        break;
+      case 'OS': {
+        const all = lead.concat(lag).sort((a, b) => a - b);
+        const k = Math.min(osK, all.length) - 1;
+        noiseEst = all[k];
+        break;
+      }
+    }
+    threshold[i] = alpha * noiseEst;
+    if (signal[i] > threshold[i]) detections.push(i);
+  }
+
+  return { threshold, detections, alpha };
+}
+
+function regenerate() { generateScene(); update(); }
+
+function update() {
+  if (!signal) generateScene();
+
+  const type = document.getElementById('cfar-type').value;
+  const refCells = +document.getElementById('ref').value;
+  const guardCells = +document.getElementById('guard').value;
+  const pfaLog = +document.getElementById('pfa').value;
+  const osK = +document.getElementById('os-k').value;
+  const pfa = Math.pow(10, pfaLog);
+
+  document.getElementById('v-ref').textContent = refCells;
+  document.getElementById('v-guard').textContent = guardCells;
+  document.getElementById('v-pfa').textContent = pfaLog;
+  document.getElementById('v-os-k').textContent = osK;
+  document.getElementById('v-ntgt').textContent = document.getElementById('ntgt').value;
+
+  const isOS = type === 'OS';
+  document.getElementById('os-label').style.display = isOS ? 'flex' : 'none';
+  document.getElementById('os-k').style.display = isOS ? 'block' : 'none';
+
+  const { threshold, detections, alpha } = cfarThreshold(type, refCells, guardCells, pfa, osK);
+
+  // Count true detections vs false alarms
+  let trueD = 0, falseA = 0;
+  detections.forEach(d => {
+    if (targets.some(t => Math.abs(t.pos - d) <= 2)) trueD++; else falseA++;
+  });
+
+  document.getElementById('m-present').textContent = targets.length;
+  document.getElementById('m-det').textContent = trueD + ' / ' + targets.length;
+  document.getElementById('m-fa').textContent = falseA;
+  document.getElementById('m-alpha').textContent = alpha.toFixed(2);
+
+  const cellIdx = Array.from({ length: NCELLS }, (_, i) => i);
+  const sigDb = Array.from(signal).map(v => 10 * Math.log10(Math.max(v, 1e-10)));
+  const thrDb = Array.from(threshold).map(v => v > 0 ? 10 * Math.log10(v) : -50);
+
+  // Detection markers
+  const detX = detections, detY = detections.map(d => sigDb[d]);
+
+  // Plot 1: Signal + threshold + detections
+  Plotly.react('plot-signal', [
+    { x: cellIdx, y: sigDb, mode: 'lines', line: { color: '#60a5fa', width: 1.5 }, name: 'Signal' },
+    { x: cellIdx, y: thrDb, mode: 'lines', line: { color: '#facc15', width: 2 }, name: `${type}-CFAR Threshold` },
+    { x: detX, y: detY, mode: 'markers', marker: { size: 8, color: '#ef4444', symbol: 'triangle-up' }, name: 'Detections' },
+  ], { ...lo, title: { text: `${type}-CFAR Detection (Pfa=10^${pfaLog})`, font: { size: 13 } }, xaxis: { ...lo.xaxis, title: 'Range Cell' }, yaxis: { ...lo.yaxis, title: 'Power (dB)' }, legend: { font: { size: 9 } } }, { responsive: true });
+
+  // Plot 2: CFAR window visualization (at a target cell)
+  const cwCell = targets.length > 0 ? targets[0].pos : Math.floor(NCELLS / 2);
+  const winStart = Math.max(0, cwCell - refCells - guardCells);
+  const winEnd = Math.min(NCELLS - 1, cwCell + refCells + guardCells);
+  const winCells = Array.from({ length: winEnd - winStart + 1 }, (_, i) => winStart + i);
+  const winVals = winCells.map(i => sigDb[i]);
+  const winColors = winCells.map(i => {
+    const d = Math.abs(i - cwCell);
+    if (d === 0) return '#ef4444';
+    if (d <= guardCells) return '#4b5563';
+    if (d <= guardCells + refCells) return '#60a5fa';
+    return '#1f2937';
+  });
+
+  Plotly.react('plot-window', [{
+    x: winCells, y: winVals, type: 'bar', marker: { color: winColors },
+    hovertemplate: 'Cell %{x}<br>%{y:.1f} dB'
+  }], { ...lo, title: { text: `CFAR Window at Cell ${cwCell}`, font: { size: 13 } }, xaxis: { ...lo.xaxis, title: 'Range Cell' }, yaxis: { ...lo.yaxis, title: 'Power (dB)' },
+    annotations: [
+      { x: cwCell, y: sigDb[cwCell] + 3, text: 'CUT', showarrow: false, font: { color: '#ef4444', size: 11 } },
+    ]
+  }, { responsive: true });
+
+  // Plot 3: Threshold vs fixed threshold
+  const avgNoise = sigDb.slice(0, 50).reduce((a, b) => a + b, 0) / 50;
+  const fixedThr = avgNoise + 10 * Math.log10(alpha);
+
+  Plotly.react('plot-threshold', [
+    { x: cellIdx, y: sigDb, mode: 'lines', line: { color: '#60a5fa', width: 1 }, name: 'Signal' },
+    { x: cellIdx, y: thrDb, mode: 'lines', line: { color: '#facc15', width: 2 }, name: 'CFAR (adaptive)' },
+    { x: [0, NCELLS], y: [fixedThr, fixedThr], mode: 'lines', line: { color: '#ef4444', width: 2, dash: 'dash' }, name: 'Fixed threshold' },
+  ], { ...lo, title: { text: 'Adaptive vs Fixed Threshold', font: { size: 13 } }, xaxis: { ...lo.xaxis, title: 'Range Cell' }, yaxis: { ...lo.yaxis, title: 'Power (dB)' }, legend: { font: { size: 9 } } }, { responsive: true });
+
+  // Plot 4: Compare all CFAR types
+  const types = ['CA', 'GO', 'SO', 'OS'];
+  const colors = ['#60a5fa', '#4ade80', '#f472b6', '#a78bfa'];
+  const compTraces = [{ x: cellIdx, y: sigDb, mode: 'lines', line: { color: '#4b5563', width: 1 }, name: 'Signal' }];
+  types.forEach((tp, idx) => {
+    const { threshold: thr } = cfarThreshold(tp, refCells, guardCells, pfa, osK);
+    const tDb = Array.from(thr).map(v => v > 0 ? 10 * Math.log10(v) : -50);
+    compTraces.push({ x: cellIdx, y: tDb, mode: 'lines', line: { color: colors[idx], width: tp === type ? 2.5 : 1.5, dash: tp === type ? 'solid' : 'dot' }, name: tp });
+  });
+
+  Plotly.react('plot-compare', compTraces, { ...lo, title: { text: 'CFAR Algorithm Comparison', font: { size: 13 } }, xaxis: { ...lo.xaxis, title: 'Range Cell' }, yaxis: { ...lo.yaxis, title: 'Threshold (dB)' }, legend: { font: { size: 9 } } }, { responsive: true });
+}
+
+['cfar-type', 'clutter'].forEach(id => document.getElementById(id).addEventListener('change', update));
+['ref', 'guard', 'pfa', 'os-k', 'ntgt', 'noise'].forEach(id => document.getElementById(id).addEventListener('input', update));
+regenerate();
+</script>
+</body>
+</html>

@@ -1,0 +1,69 @@
+/* ── Theme Variables ─────────────────────────────────── */
+:root, [data-theme="dark"] {
+  --bg-body: #111827; --bg-card: #1f2937; --bg-control: #111827;
+  --border: #374151; --text-primary: #d1d5db; --text-secondary: #9ca3af;
+  --text-muted: #6b7280; --text-dim: #4b5563;
+  --accent: #60a5fa; --accent-bg: #60a5fa; --accent-text: #111827;
+  --input-bg: #1f2937; --select-bg: #1f2937;
+}
+[data-theme="light"] {
+  --bg-body: #f8fafc; --bg-card: #ffffff; --bg-control: #f1f5f9;
+  --border: #e2e8f0; --text-primary: #0f172a; --text-secondary: #475569;
+  --text-muted: #94a3b8; --text-dim: #cbd5e1;
+  --accent: #2563eb; --accent-bg: #2563eb; --accent-text: #ffffff;
+  --input-bg: #ffffff; --select-bg: #ffffff;
+}
+
+/* ── Light theme overrides for inline-styled elements ─ */
+[data-theme="light"] body { background: var(--bg-body) !important; color: var(--text-primary) !important; }
+[data-theme="light"] .header { background: var(--bg-card) !important; border-color: var(--border) !important; }
+[data-theme="light"] .controls { background: var(--bg-card) !important; }
+[data-theme="light"] .control-group { background: var(--bg-control) !important; }
+[data-theme="light"] .control-group h3 { color: var(--text-muted) !important; }
+[data-theme="light"] .header p { color: var(--text-secondary) !important; }
+[data-theme="light"] .plot { background: var(--bg-card) !important; }
+[data-theme="light"] .info-box { background: var(--bg-control) !important; color: var(--text-secondary) !important; }
+[data-theme="light"] .info-box code { color: var(--accent) !important; }
+[data-theme="light"] label { color: var(--text-primary) !important; }
+[data-theme="light"] label span.val { color: var(--accent) !important; }
+[data-theme="light"] input[type=range] { accent-color: var(--accent) !important; }
+[data-theme="light"] select { background: var(--select-bg) !important; color: var(--text-primary) !important; border-color: var(--border) !important; }
+[data-theme="light"] .toggle-group button { background: var(--bg-control) !important; color: var(--text-secondary) !important; border-color: var(--border) !important; }
+[data-theme="light"] .toggle-group button.active { background: var(--accent-bg) !important; color: var(--accent-text) !important; border-color: var(--accent) !important; }
+[data-theme="light"] .metric { border-color: var(--border) !important; }
+[data-theme="light"] .metric .label { color: var(--text-secondary) !important; }
+[data-theme="light"] .metric .value { color: var(--accent) !important; }
+[data-theme="light"] .status { color: var(--text-secondary) !important; }
+[data-theme="light"] .status.warn { color: #d97706 !important; }
+[data-theme="light"] .status.bad { color: #dc2626 !important; }
+[data-theme="light"] .status.ok { color: #16a34a !important; }
+[data-theme="light"] button { color: var(--text-primary) !important; }
+[data-theme="light"] input[type=number] { background: var(--input-bg) !important; color: var(--text-primary) !important; border-color: var(--border) !important; }
+
+/* ── Index page light overrides ───────────────────────── */
+[data-theme="light"] .course { background: var(--bg-card) !important; }
+[data-theme="light"] .course-header { border-color: var(--border) !important; }
+[data-theme="light"] .course-header .ref { color: var(--text-muted) !important; }
+[data-theme="light"] .demos { background: var(--border) !important; }
+[data-theme="light"] .demo-link { background: var(--bg-card) !important; color: var(--text-primary) !important; }
+[data-theme="light"] .demo-link:hover { background: #f1f5f9 !important; }
+[data-theme="light"] .demo-link .num { color: var(--text-muted) !important; }
+[data-theme="light"] .demo-link .arrow { color: var(--text-muted) !important; }
+[data-theme="light"] .footer { color: var(--text-muted) !important; }
+
+/* ── Header layout (back + title + toggle) ────────────── */
+.header { display: flex !important; align-items: center !important; gap: 1rem !important; }
+.back-link {
+  color: var(--text-muted); text-decoration: none; font-size: 1.1rem;
+  padding: 0.3rem 0.5rem; border-radius: 6px; line-height: 1;
+  transition: color 0.15s, background 0.15s;
+}
+.back-link:hover { color: var(--accent); background: rgba(96,165,250,0.1); }
+.header-title { flex: 1; }
+.theme-toggle {
+  background: none; border: 1px solid var(--border); color: var(--text-secondary);
+  width: 2.2rem; height: 2.2rem; border-radius: 8px; cursor: pointer;
+  font-size: 1rem; display: flex; align-items: center; justify-content: center;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.theme-toggle:hover { color: var(--accent); border-color: var(--accent); background: rgba(96,165,250,0.08); }

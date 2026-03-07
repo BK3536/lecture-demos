@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+<link rel="stylesheet" href="../theme.css">
+<title>RCS &amp; Swerling Models</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="../theme.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Pretendard', 'Inter', system-ui, -apple-system, sans-serif; background: #111827; color: #d1d5db; }
+  .header { padding: 1.2rem 2rem; background: #1f2937; border-bottom: 1px solid #374151; }
+  .header h1 { font-size: 1.4rem; font-weight: 600; }
+  .header p { font-size: 0.85rem; color: #9ca3af; margin-top: 0.3rem; }
+  .container { display: grid; grid-template-columns: 280px 1fr; height: calc(100vh - 80px); }
+  .controls { padding: 1.2rem; background: #1f2937; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; }
+  .control-group { background: #111827; border-radius: 8px; padding: 1rem; }
+  .control-group h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 0.7rem; }
+  label { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin-bottom: 0.3rem; }
+  label span.val { color: #60a5fa; font-family: monospace; }
+  input[type=range] { width: 100%; accent-color: #60a5fa; margin-bottom: 0.5rem; }
+  select { width: 100%; padding: 0.4rem; background: #1f2937; color: #d1d5db; border: 1px solid #374151; border-radius: 6px; font-size: 0.85rem; margin-bottom: 0.5rem; }
+  .plots { padding: 1rem; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 0.5rem; }
+  .plot { background: #1f2937; border-radius: 8px; }
+  .info-box { background: #111827; border-radius: 8px; padding: 0.8rem 1rem; font-size: 0.8rem; line-height: 1.6; color: #9ca3af; }
+  .info-box code { color: #60a5fa; }
+  .metric { display: flex; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid #1f2937; font-size: 0.82rem; }
+  .metric:last-child { border-bottom: none; }
+  .metric .label { color: #9ca3af; }
+  .metric .value { color: #60a5fa; font-family: monospace; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="header">
+  <a class="back-link" href="../index.html" title="All demos">&larr;</a>
+  <div class="header-title">
+    <h1>Radar Cross Section &amp; Swerling Models</h1>
+    <p>Skolnik &mdash; RCS Characteristics &amp; Target Fluctuation</p>
+  </div>
+  <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"></button>
+</div>
+<div class="container">
+  <div class="controls">
+    <div class="control-group">
+      <h3>Target</h3>
+      <select id="shape">
+        <option value="sphere">Sphere</option>
+        <option value="plate">Flat Plate</option>
+        <option value="cylinder">Cylinder</option>
+        <option value="corner">Corner Reflector</option>
+        <option value="aircraft">Complex / Aircraft</option>
+      </select>
+      <label>Size / dimension (m) <span class="val" id="v-size">0.5</span></label>
+      <input type="range" id="size" min="0.01" max="10" step="0.01" value="0.5">
+    </div>
+    <div class="control-group">
+      <h3>Frequency</h3>
+      <label>Frequency (GHz) <span class="val" id="v-freq">10</span></label>
+      <input type="range" id="freq" min="1" max="100" step="1" value="10">
+    </div>
+    <div class="control-group">
+      <h3>Swerling &amp; Detection</h3>
+      <select id="swerling">
+        <option value="0">Swerling 0 (Non-fluctuating)</option>
+        <option value="1">Swerling I (slow, Rayleigh)</option>
+        <option value="2">Swerling II (fast, Rayleigh)</option>
+        <option value="3">Swerling III (slow, Rice)</option>
+        <option value="4">Swerling IV (fast, Rice)</option>
+      </select>
+      <label>P<sub>fa</sub> (log<sub>10</sub>) <span class="val" id="v-pfa">-6</span></label>
+      <input type="range" id="pfa" min="-8" max="-4" step="0.5" value="-6">
+      <label>Pulses N <span class="val" id="v-N">10</span></label>
+      <input type="range" id="npulse" min="1" max="100" step="1" value="10">
+    </div>
+    <div class="control-group">
+      <h3>RCS Metrics</h3>
+      <div class="metric"><span class="label">Mean RCS (&sigma;&macr;)</span><span class="value" id="m-rcs">—</span></div>
+      <div class="metric"><span class="label">Peak RCS (broadside)</span><span class="value" id="m-peak">—</span></div>
+      <div class="metric"><span class="label">2&pi;a/&lambda;</span><span class="value" id="m-ka">—</span></div>
+      <div class="metric"><span class="label">Region</span><span class="value" id="m-region">—</span></div>
+    </div>
+    <div class="info-box">
+      <strong>Swerling Models</strong><br>
+      <code>SW0:</code> constant RCS<br>
+      <code>SW I/II:</code> exp PDF (Rayleigh amp) &mdash; many scatterers<br>
+      <code>SW III/IV:</code> &chi;&sup2; 4-DOF (Rice amp) &mdash; one dominant<br><br>
+      Slow (I, III): scan-to-scan decorrelation<br>
+      Fast (II, IV): pulse-to-pulse decorrelation<br><br>
+      <strong>RCS formulas</strong><br>
+      Sphere: <code>&sigma; = &pi;a&sup2;</code> (optical)<br>
+      Flat plate: <code>&sigma; = 4&pi;A&sup2;/&lambda;&sup2;</code><br>
+      Corner: <code>&sigma; = 12&pi;a&sup4;/&lambda;&sup2;</code>
+    </div>
+  </div>
+  <div class="plots">
+    <div class="plot" id="plot-polar"></div>
+    <div class="plot" id="plot-rcsfreq"></div>
+    <div class="plot" id="plot-pdf"></div>
+    <div class="plot" id="plot-pd"></div>
+  </div>
+</div>
+<script>
+var _t=THEMES[curTheme];var plotBg=_t.plotBg,paperBg=_t.paperBg,gridColor=_t.gridColor,textColor=_t.textColor;
+var lo={paper_bgcolor:paperBg,plot_bgcolor:plotBg,font:{color:textColor,size:11},margin:{t:40,r:16,b:40,l:50},xaxis:{gridcolor:gridColor,zerolinecolor:_t.zeroLine},yaxis:{gridcolor:gridColor,zerolinecolor:_t.zeroLine}};
+
+const c_light = 3e8;
+const NANGLE = 361;
+const NFREQ = 200;
+const NPDF = 300;
+const NSNR = 80;
+
+function linspace(a, b, n) {
+  const arr = [];
+  for (let i = 0; i < n; i++) arr.push(a + (b - a) * i / (n - 1));
+  return arr;
+}
+
+// RCS vs aspect angle for each shape
+function rcsPattern(shape, a, lambda) {
+  const angles = linspace(0, 2 * Math.PI, NANGLE);
+  return angles.map(theta => {
+    switch (shape) {
+      case 'sphere': {
+        // Optical region: constant. Add small oscillation for sphere resonance effect.
+        const ka = 2 * Math.PI * a / lambda;
+        if (ka > 10) return Math.PI * a * a; // optical: constant
+        if (ka < 1) return (9 * Math.PI * a * a) * Math.pow(ka, 4) / 1; // Rayleigh
+        // Resonance: oscillating
+        const osc = 1 + 0.3 * Math.sin(2 * ka);
+        return Math.PI * a * a * osc * osc;
+      }
+      case 'plate': {
+        // Strong specular return at broadside (theta=pi/2 and 3pi/2), rapid nulls off-broadside
+        const inc = theta - Math.PI / 2; // angle from broadside
+        const A = Math.PI * a * a;
+        const x = (2 * Math.PI * a / lambda) * Math.sin(inc) + 1e-10;
+        const sinc2 = (Math.sin(x) / x) ** 2;
+        return (4 * Math.PI * A * A / (lambda * lambda)) * sinc2 + 1e-6;
+      }
+      case 'cylinder': {
+        // Cylinder: strong broadside, null at ends
+        const L = a, r = a / 4;
+        const inc = theta - Math.PI / 2;
+        const sinc_az = Math.abs(Math.sin(theta)) + 1e-10;
+        return (2 * Math.PI * r * L * L / lambda) * Math.abs(Math.sin(theta)) ** 2 + 1e-6;
+      }
+      case 'corner': {
+        // Corner reflector: forward-facing lobe
+        const inc = Math.abs(theta - Math.PI / 2);
+        const falloff = Math.exp(-8 * inc * inc);
+        return (12 * Math.PI * a * a * a * a / (lambda * lambda)) * falloff + 1e-6;
+      }
+      case 'aircraft': {
+        // Complex target: multiple scattering centers, loby pattern
+        const rcs0 = Math.PI * a * a;
+        const multi = 1 + 0.8 * Math.cos(8 * theta) + 0.5 * Math.cos(16 * theta) + 0.3 * Math.cos(4 * theta + 1.2) + 0.2 * Math.cos(24 * theta);
+        return rcs0 * Math.max(0.01, Math.abs(multi));
+      }
+    }
+  });
+}
+
+// RCS vs frequency (ka range)
+function rcsVsFreq(shape, a) {
+  const freqs = linspace(0.1e9, 100e9, NFREQ);
+  return freqs.map(f => {
+    const lam = c_light / f;
+    const ka = 2 * Math.PI * a / lam;
+    switch (shape) {
+      case 'sphere': {
+        if (ka < 1) return Math.PI * a * a * Math.pow(ka, 4) * 9; // Rayleigh: ~f^4
+        if (ka > 10) return Math.PI * a * a * (1 + 0.1 * Math.sin(2 * ka)); // optical with ripple
+        return Math.PI * a * a * (0.5 + 0.5 * Math.sin(ka)); // resonance
+      }
+      case 'plate': {
+        const A = Math.PI * a * a;
+        return 4 * Math.PI * A * A / (lam * lam);
+      }
+      case 'cylinder': {
+        const r = a / 4, L = a;
+        return 2 * Math.PI * r * L * L / lam;
+      }
+      case 'corner': {
+        return 12 * Math.PI * a * a * a * a / (lam * lam);
+      }
+      case 'aircraft': {
+        const base = Math.PI * a * a;
+        if (ka < 1) return base * Math.pow(ka, 4) * 5;
+        return base * (1 + 0.4 * Math.sin(ka * 3));
+      }
+    }
+  });
+}
+
+// Swerling PDF
+function swerlingPdf(model, rcsMean, x) {
+  switch (+model) {
+    case 0: return 0; // delta function, handled separately
+    case 1:
+    case 2: // Exponential (chi-sq 2 DOF)
+      return (1 / rcsMean) * Math.exp(-x / rcsMean);
+    case 3:
+    case 4: // chi-squared 4 DOF
+      return (4 * x / (rcsMean * rcsMean)) * Math.exp(-2 * x / rcsMean);
+  }
+}
+
+// Albersheim approximation for Pd
+// Returns Pd for Swerling 0 (non-fluctuating) given SNR (linear), N pulses, Pfa
+function pdNonFluc(snrLin, N, pfa) {
+  // Shnidman-like: use Albersheim's equation inverted
+  // ln(Pd) approximation via Gaussian approximation to chi-squared
+  const pn = Math.log(pfa) / Math.log(10);
+  // Threshold factor (from Pfa, N pulses, non-coherent)
+  const A = Math.log(0.62 / pfa);
+  const B = Math.log(pfa / (1 - pfa));
+  // SNR per pulse (linear)
+  const snrPulse = snrLin;
+  // Deflection (approximate chi-squared approximation)
+  const mu0 = N; // mean under H0 (normalized)
+  const sigma0 = Math.sqrt(2 * N);
+  // Under H1 with signal: mean = N(1 + snr), variance ~ 2N(1+snr)^2 + 4N*snr (approx)
+  const mu1 = N * (1 + snrPulse);
+  const sigma1 = Math.sqrt(2 * N * (1 + snrPulse) ** 2);
+  // Threshold from Pfa
+  const thr = mu0 + sigma0 * erfInv(1 - 2 * pfa) * Math.sqrt(2);
+  const z = (thr - mu1) / sigma1;
+  return 0.5 * erfc(z / Math.sqrt(2));
+}
+
+// Shnidman approximation for Swerling Pd
+function pdSwerling(model, snrLin, N, pfa) {
+  model = +model;
+  if (model === 0) return pdNonFluc(snrLin, N, pfa);
+
+  // Use the Albersheim approximation adjusted for Swerling models
+  // SNR penalty factors relative to Swerling 0
+  // Approximate: SW I/II require ~10*log10(N) more SNR at high Pd
+  // Use empirical correction
+  let snrEff;
+  switch (model) {
+    case 1: snrEff = snrLin / (1 + snrLin); break; // slow fluctuation, N pulses don't help as much
+    case 2: snrEff = snrLin * N / (1 + snrLin); break; // fast: pulses help
+    case 3: snrEff = snrLin / (1 + 0.5 * snrLin); break;
+    case 4: snrEff = snrLin * Math.sqrt(N) / (1 + 0.5 * snrLin); break;
+  }
+  return pdNonFluc(snrEff, N, pfa);
+}
+
+function erfInv(x) {
+  // Approximation of inverse erf
+  const a = 0.147;
+  const lnTerm = Math.log(1 - x * x);
+  const term1 = 2 / (Math.PI * a) + lnTerm / 2;
+  return Math.sign(x) * Math.sqrt(Math.sqrt(term1 * term1 - lnTerm / a) - term1);
+}
+
+function erfc(x) {
+  // Complementary error function approximation
+  if (x > 6) return 0;
+  if (x < -6) return 2;
+  const t = 1 / (1 + 0.3275911 * Math.abs(x));
+  const poly = t * (0.254829592 + t * (-0.284496736 + t * (1.421413741 + t * (-1.453152027 + t * 1.061405429))));
+  const val = poly * Math.exp(-x * x);
+  return x >= 0 ? val : 2 - val;
+}
+
+function update() {
+  const shape = document.getElementById('shape').value;
+  const a = +document.getElementById('size').value;
+  const freqGHz = +document.getElementById('freq').value;
+  const swerling = document.getElementById('swerling').value;
+  const pfaLog = +document.getElementById('pfa').value;
+  const N = +document.getElementById('npulse').value;
+
+  document.getElementById('v-size').textContent = a.toFixed(2);
+  document.getElementById('v-freq').textContent = freqGHz;
+  document.getElementById('v-pfa').textContent = pfaLog;
+  document.getElementById('v-N').textContent = N;
+
+  const freq = freqGHz * 1e9;
+  const lambda = c_light / freq;
+  const pfa = Math.pow(10, pfaLog);
+  const ka = 2 * Math.PI * a / lambda;
+
+  // RCS metrics
+  const pattern = rcsPattern(shape, a, lambda);
+  const meanRCS = pattern.reduce((s, v) => s + v, 0) / pattern.length;
+  const peakRCS = Math.max(...pattern);
+
+  document.getElementById('m-rcs').textContent = (10 * Math.log10(meanRCS)).toFixed(1) + ' dBsm';
+  document.getElementById('m-peak').textContent = (10 * Math.log10(peakRCS)).toFixed(1) + ' dBsm';
+  document.getElementById('m-ka').textContent = ka.toFixed(2);
+  document.getElementById('m-region').textContent = ka < 1 ? 'Rayleigh' : ka > 10 ? 'Optical' : 'Resonance';
+
+  // Plot 1: RCS polar pattern
+  const angles = linspace(0, 360, NANGLE);
+  const rcsDb = pattern.map(v => Math.max(10 * Math.log10(v), -40));
+  const rcsDbNorm = rcsDb.map(v => v - Math.max(...rcsDb)); // normalize to 0 dB peak
+
+  Plotly.react('plot-polar', [{
+    type: 'scatterpolar', r: rcsDbNorm.map(v => v + 40), theta: angles,
+    mode: 'lines', line: { color: '#60a5fa', width: 2 },
+    name: 'RCS pattern'
+  }], {
+    ...lo,
+    polar: {
+      bgcolor: plotBg,
+      radialaxis: { gridcolor: gridColor, color: textColor, tickfont: { size: 9 }, range: [0, 40] },
+      angularaxis: { gridcolor: gridColor, color: textColor }
+    },
+    title: { text: `RCS Pattern &mdash; ${shape} (${freqGHz} GHz)`, font: { size: 13 } }
+  }, { responsive: true });
+
+  // Plot 2: RCS vs frequency
+  const freqs = linspace(0.1e9, 100e9, NFREQ);
+  const freqsGHz = freqs.map(f => f / 1e9);
+  const rcsFreq = rcsVsFreq(shape, a);
+  const rcsFreqDb = rcsFreq.map(v => 10 * Math.log10(Math.max(v, 1e-10)));
+  const kaFreq = freqs.map(f => 2 * Math.PI * a / (c_light / f));
+  const rayleighEnd = freqs.find(f => 2 * Math.PI * a / (c_light / f) >= 1) / 1e9 || 1;
+  const opticalStart = freqs.find(f => 2 * Math.PI * a / (c_light / f) >= 10) / 1e9 || 10;
+
+  Plotly.react('plot-rcsfreq', [
+    { x: freqsGHz, y: rcsFreqDb, mode: 'lines', line: { color: '#60a5fa', width: 2 }, name: 'RCS' },
+    { x: [freqGHz, freqGHz], y: [Math.min(...rcsFreqDb), Math.max(...rcsFreqDb)], mode: 'lines', line: { color: '#facc15', dash: 'dash', width: 1.5 }, name: 'Operating freq' }
+  ], {
+    ...lo,
+    title: { text: 'RCS vs Frequency', font: { size: 13 } },
+    xaxis: { ...lo.xaxis, title: 'Frequency (GHz)', type: 'log' },
+    yaxis: { ...lo.yaxis, title: 'RCS (dBsm)' },
+    legend: { font: { size: 9 } },
+    shapes: [
+      { type: 'rect', xref: 'x', yref: 'paper', x0: 0.1, x1: rayleighEnd, y0: 0, y1: 1, fillcolor: 'rgba(239,68,68,0.1)', line: { width: 0 } },
+      { type: 'rect', xref: 'x', yref: 'paper', x0: opticalStart, x1: 100, y0: 0, y1: 1, fillcolor: 'rgba(74,222,128,0.1)', line: { width: 0 } }
+    ],
+    annotations: [
+      { xref: 'x', yref: 'paper', x: Math.max(0.2, rayleighEnd * 0.5), y: 0.95, text: 'Rayleigh', showarrow: false, font: { color: '#ef4444', size: 10 } },
+      { xref: 'x', yref: 'paper', x: Math.min(90, opticalStart * 3), y: 0.95, text: 'Optical', showarrow: false, font: { color: '#4ade80', size: 10 } },
+      { xref: 'paper', yref: 'paper', x: 0.45, y: 0.95, text: 'Resonance', showarrow: false, font: { color: '#a78bfa', size: 10 } }
+    ]
+  }, { responsive: true });
+
+  // Plot 3: Swerling PDF
+  const rcsMean = meanRCS;
+  const xMax = 5 * rcsMean;
+  const xPdf = linspace(0.001 * rcsMean, xMax, NPDF);
+  const xPdfDb = xPdf.map(v => 10 * Math.log10(v));
+  const pdfVals = xPdf.map(x => swerlingPdf(swerling, rcsMean, x));
+  const swModel = +swerling;
+
+  const pdfTraces = [];
+  if (swModel === 0) {
+    // Delta function at mean
+    pdfTraces.push({ x: [10 * Math.log10(rcsMean), 10 * Math.log10(rcsMean)], y: [0, 1], mode: 'lines', line: { color: '#60a5fa', width: 3 }, name: 'SW0 (delta)' });
+  } else {
+    // Normalize PDF for display
+    const pdfMax = Math.max(...pdfVals);
+    pdfTraces.push({ x: xPdfDb, y: pdfVals.map(v => v / pdfMax), mode: 'lines', line: { color: '#60a5fa', width: 2 }, name: `SW${swerling} PDF` });
+    pdfTraces.push({ x: [10 * Math.log10(rcsMean), 10 * Math.log10(rcsMean)], y: [0, 1], mode: 'lines', line: { color: '#facc15', dash: 'dash', width: 2 }, name: 'Mean RCS' });
+  }
+
+  const pdfNames = { '0': 'Swerling 0 (fixed)', '1': 'SW I: exponential (slow)', '2': 'SW II: exponential (fast)', '3': 'SW III: chi-sq (slow)', '4': 'SW IV: chi-sq (fast)' };
+
+  Plotly.react('plot-pdf', pdfTraces, {
+    ...lo,
+    title: { text: `RCS PDF &mdash; ${pdfNames[swerling]}`, font: { size: 13 } },
+    xaxis: { ...lo.xaxis, title: 'RCS (dBsm)' },
+    yaxis: { ...lo.yaxis, title: 'Normalized PDF' },
+    legend: { font: { size: 9 } }
+  }, { responsive: true });
+
+  // Plot 4: Pd vs SNR for all Swerling cases
+  const snrDb = linspace(-5, 25, NSNR);
+  const snrLin = snrDb.map(v => Math.pow(10, v / 10));
+  const swColors = { '0': '#ffffff', '1': '#60a5fa', '2': '#4ade80', '3': '#f472b6', '4': '#a78bfa' };
+  const swNames = { '0': 'SW0', '1': 'SW I', '2': 'SW II', '3': 'SW III', '4': 'SW IV' };
+
+  const pdTraces = Object.keys(swColors).map(sw => {
+    const pd = snrLin.map(snr => Math.min(1, Math.max(0, pdSwerling(sw, snr, N, pfa))));
+    return {
+      x: snrDb, y: pd, mode: 'lines',
+      line: { color: swColors[sw], width: sw === swerling ? 3 : 1.5, dash: sw === swerling ? 'solid' : 'dot' },
+      name: swNames[sw]
+    };
+  });
+
+  Plotly.react('plot-pd', pdTraces, {
+    ...lo,
+    title: { text: `Pd vs SNR (N=${N}, Pfa=10^${pfaLog})`, font: { size: 13 } },
+    xaxis: { ...lo.xaxis, title: 'SNR per pulse (dB)' },
+    yaxis: { ...lo.yaxis, title: 'Probability of Detection', range: [0, 1] },
+    legend: { font: { size: 9 } },
+    shapes: [{ type: 'line', xref: 'paper', yref: 'y', x0: 0, x1: 1, y0: 0.9, y1: 0.9, line: { color: '#4b5563', dash: 'dot', width: 1 } }],
+    annotations: [{ xref: 'paper', yref: 'y', x: 0.02, y: 0.92, text: 'Pd = 0.9', showarrow: false, font: { color: '#9ca3af', size: 9 } }]
+  }, { responsive: true });
+}
+
+['shape', 'swerling'].forEach(id => document.getElementById(id).addEventListener('change', update));
+['size', 'freq', 'pfa', 'npulse'].forEach(id => document.getElementById(id).addEventListener('input', update));
+update();
+</script>
+</body>
+</html>

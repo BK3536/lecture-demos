@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+<link rel="stylesheet" href="../theme.css">
+<title>Spectral Estimation &amp; CZT</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="../theme.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Pretendard', 'Inter', system-ui, -apple-system, sans-serif; background: #111827; color: #d1d5db; }
+  .header { padding: 1.2rem 2rem; background: #1f2937; border-bottom: 1px solid #374151; }
+
+  .header-title { flex: 1; }
+  .header h1 { font-size: 1.4rem; font-weight: 600; }
+  .header p { font-size: 0.85rem; color: #9ca3af; margin-top: 0.3rem; }
+  .theme-toggle { background: #374151; border: none; color: #d1d5db; padding: 0.5rem; border-radius: 6px; cursor: pointer; }
+  .container { display: grid; grid-template-columns: 280px 1fr; height: calc(100vh - 80px); }
+  .controls { padding: 1.2rem; background: #1f2937; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; }
+  .control-group { background: #111827; border-radius: 8px; padding: 1rem; }
+  .control-group h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 0.7rem; }
+  label { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin-bottom: 0.3rem; }
+  label span.val { color: #60a5fa; font-family: monospace; }
+  input[type=range] { width: 100%; accent-color: #60a5fa; margin-bottom: 0.5rem; }
+  select { width: 100%; padding: 0.4rem; background: #1f2937; color: #d1d5db; border: 1px solid #374151; border-radius: 6px; font-size: 0.85rem; margin-bottom: 0.5rem; }
+  .plots { padding: 1rem; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 0.5rem; }
+  .plot { background: #1f2937; border-radius: 8px; }
+  .info-box { background: #111827; border-radius: 8px; padding: 0.8rem 1rem; font-size: 0.8rem; line-height: 1.6; color: #9ca3af; }
+  .info-box code { color: #60a5fa; }
+  .cb-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; margin-bottom: 0.35rem; }
+  .cb-row input[type=checkbox] { accent-color: #60a5fa; width: 14px; height: 14px; }
+  .cb-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+</style>
+</head>
+<body>
+<div class="header">
+  <a class="back-link" href="../index.html" title="All demos">&larr;</a>
+  <div class="header-title">
+    <h1>Spectral Estimation &amp; Chirp-Z Transform</h1>
+    <p>Stoica &amp; Moses — Spectral Analysis of Signals</p>
+  </div>
+  <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"></button>
+</div>
+<div class="container">
+  <div class="controls">
+    <div class="control-group">
+      <h3>Signal</h3>
+      <select id="sigtype">
+        <option value="two">Two Sinusoids</option>
+        <option value="three">Three Sinusoids</option>
+        <option value="chirpsin">Chirp + Sinusoid</option>
+        <option value="broadband">Broadband + Narrowband</option>
+      </select>
+      <label>Frequency f<sub>1</sub> (Hz) <span class="val" id="v-f1">50</span></label>
+      <input type="range" id="f1" min="5" max="240" step="1" value="50">
+      <label>Frequency f<sub>2</sub> (Hz) <span class="val" id="v-f2">55</span></label>
+      <input type="range" id="f2" min="5" max="240" step="1" value="55">
+      <label>SNR (dB) <span class="val" id="v-snr">20</span></label>
+      <input type="range" id="snr" min="-10" max="40" step="1" value="20">
+      <label>Data length N <span class="val" id="v-N">128</span></label>
+      <input type="range" id="N" min="16" max="512" step="4" value="128">
+    </div>
+    <div class="control-group">
+      <h3>Methods</h3>
+      <div class="cb-row"><input type="checkbox" id="cb-pgram" checked><div class="cb-dot" style="background:#60a5fa"></div>Periodogram</div>
+      <div class="cb-row"><input type="checkbox" id="cb-welch" checked><div class="cb-dot" style="background:#f59e0b"></div>Welch</div>
+      <div class="cb-row"><input type="checkbox" id="cb-music" checked><div class="cb-dot" style="background:#f472b6"></div>MUSIC</div>
+      <div class="cb-row"><input type="checkbox" id="cb-czt" checked><div class="cb-dot" style="background:#4ade80"></div>CZT (Zoom)</div>
+      <label style="margin-top:0.5rem">MUSIC model order P <span class="val" id="v-P">2</span></label>
+      <input type="range" id="P" min="1" max="10" step="1" value="2">
+    </div>
+    <div class="control-group">
+      <h3>CZT Zoom Range</h3>
+      <label>f<sub>start</sub> (Hz) <span class="val" id="v-fstart">40</span></label>
+      <input type="range" id="fstart" min="0" max="240" step="1" value="40">
+      <label>f<sub>end</sub> (Hz) <span class="val" id="v-fend">70</span></label>
+      <input type="range" id="fend" min="5" max="249" step="1" value="70">
+    </div>
+    <div class="info-box">
+      <strong>Resolution</strong><br>
+      <code>Periodogram: &Delta;f = f<sub>s</sub>/N</code><br>
+      <code>Welch: trades variance for resolution</code><br>
+      <code>MUSIC: super-resolution, needs model order</code><br>
+      <code>CZT: zoom FFT on [f<sub>s</sub>,f<sub>e</sub>], &Delta;f=(f<sub>e</sub>-f<sub>s</sub>)/M</code><br><br>
+      <strong>MUSIC pseudospectrum:</strong><br>
+      <code>P(f) = 1 / |a<sup>H</sup>(f) E<sub>n</sub> E<sub>n</sub><sup>H</sup> a(f)|</code>
+    </div>
+  </div>
+  <div class="plots">
+    <div class="plot" id="plot-time"></div>
+    <div class="plot" id="plot-spectra"></div>
+    <div class="plot" id="plot-czt"></div>
+    <div class="plot" id="plot-resolution"></div>
+  </div>
+</div>
+<script>
+var _t=THEMES[curTheme];var plotBg=_t.plotBg,paperBg=_t.paperBg,gridColor=_t.gridColor,textColor=_t.textColor;
+var lo={paper_bgcolor:paperBg,plot_bgcolor:plotBg,font:{color:textColor,size:11},margin:{t:40,r:16,b:40,l:55},xaxis:{gridcolor:gridColor,zerolinecolor:_t.zeroLine},yaxis:{gridcolor:gridColor,zerolinecolor:_t.zeroLine}};
+
+const FS = 500; // sampling frequency
+
+function randn() {
+  let u=0,v=0;
+  while(u===0)u=Math.random();
+  while(v===0)v=Math.random();
+  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+}
+
+// Radix-2 FFT (in-place, N must be power of 2)
+function fftInPlace(re, im) {
+  const N = re.length;
+  // bit-reversal
+  for (let i=1,j=0; i<N; i++) {
+    let bit = N>>1;
+    for (; j&bit; bit>>=1) j^=bit;
+    j^=bit;
+    if (i<j) { let t=re[i];re[i]=re[j];re[j]=t; t=im[i];im[i]=im[j];im[j]=t; }
+  }
+  for (let len=2; len<=N; len<<=1) {
+    const ang = -2*Math.PI/len;
+    const wRe=Math.cos(ang), wIm=Math.sin(ang);
+    for (let i=0; i<N; i+=len) {
+      let curRe=1, curIm=0;
+      for (let j=0; j<len/2; j++) {
+        const uR=re[i+j], uI=im[i+j];
+        const vR=re[i+j+len/2]*curRe - im[i+j+len/2]*curIm;
+        const vI=re[i+j+len/2]*curIm + im[i+j+len/2]*curRe;
+        re[i+j]=uR+vR; im[i+j]=uI+vI;
+        re[i+j+len/2]=uR-vR; im[i+j+len/2]=uI-vI;
+        const nr=curRe*wRe-curIm*wIm; curIm=curRe*wIm+curIm*wRe; curRe=nr;
+      }
+    }
+  }
+}
+
+function nextPow2(n) { let p=1; while(p<n)p<<=1; return p; }
+
+function fft(x) {
+  const N = nextPow2(x.length);
+  const re = new Float64Array(N), im = new Float64Array(N);
+  for (let i=0;i<x.length;i++) re[i]=x[i];
+  fftInPlace(re, im);
+  return {re, im, N};
+}
+
+function generateSignal(type, f1, f2, N, snrDb) {
+  const t = Array.from({length:N},(_,i)=>i/FS);
+  let x;
+  if (type==='two') {
+    x = t.map(v=>Math.cos(2*Math.PI*f1*v)+0.8*Math.cos(2*Math.PI*f2*v));
+  } else if (type==='three') {
+    const f3 = Math.min(f1+80, 220);
+    x = t.map(v=>Math.cos(2*Math.PI*f1*v)+0.8*Math.cos(2*Math.PI*f2*v)+0.6*Math.cos(2*Math.PI*f3*v));
+  } else if (type==='chirpsin') {
+    x = t.map(v=>Math.cos(2*Math.PI*(20*v+100*v*v))+0.7*Math.cos(2*Math.PI*f1*v));
+  } else { // broadband + narrowband
+    x = t.map(v=>0.3*randn()+Math.cos(2*Math.PI*f1*v));
+  }
+  // Add noise
+  const sigPow = x.reduce((s,v)=>s+v*v,0)/N;
+  const snrLin = Math.pow(10, snrDb/10);
+  const nPow = sigPow/snrLin;
+  const std = Math.sqrt(Math.max(nPow,0));
+  const xn = x.map(v=>v+std*randn());
+  return {t, x: xn, xClean: x};
+}
+
+function periodogram(x) {
+  const N = x.length;
+  const {re, im, N:Nfft} = fft(x);
+  const nBins = Math.floor(Nfft/2)+1;
+  const df = FS/Nfft;
+  const freq = Array.from({length:nBins},(_,i)=>i*df);
+  const psd = Array.from({length:nBins},(_,i)=>(re[i]**2+im[i]**2)/N);
+  psd[0]/=2; if(Nfft%2===0) psd[nBins-1]/=2;
+  return {freq, psd};
+}
+
+function welch(x, segLen=null) {
+  const N = x.length;
+  if (!segLen) segLen = Math.max(16, Math.floor(N/4));
+  segLen = nextPow2(segLen);
+  const overlap = Math.floor(segLen/2);
+  const hop = segLen - overlap;
+  // Hanning window
+  const win = Array.from({length:segLen},(_,i)=>0.5-0.5*Math.cos(2*Math.PI*i/(segLen-1)));
+  const winPow = win.reduce((s,v)=>s+v*v,0)/segLen;
+  const nBins = Math.floor(segLen/2)+1;
+  const df = FS/segLen;
+  const freq = Array.from({length:nBins},(_,i)=>i*df);
+  const psdSum = new Float64Array(nBins);
+  let nSegs = 0;
+  for (let start=0; start+segLen<=N; start+=hop) {
+    const seg = Array.from({length:segLen},(_,i)=>x[start+i]*win[i]);
+    const {re,im,N:Nf}=fft(seg);
+    for (let k=0;k<nBins;k++) psdSum[k]+=(re[k]**2+im[k]**2)/(segLen*winPow);
+    nSegs++;
+  }
+  if (nSegs===0) return periodogram(x);
+  const psd = Array.from(psdSum,v=>v/nSegs);
+  psd[0]/=2; if(segLen%2===0)psd[nBins-1]/=2;
+  return {freq, psd};
+}
+
+// Matrix ops (row-major flat arrays)
+function matMul(A, B, n, m, p) {
+  const C = new Float64Array(n*p);
+  for (let i=0;i<n;i++) for (let k=0;k<m;k++) for (let j=0;j<p;j++) C[i*p+j]+=A[i*m+k]*B[k*p+j];
+  return C;
+}
+
+function music(x, P) {
+  // Model order P (number of sinusoids)
+  const N = x.length;
+  const M = Math.min(Math.floor(N/3), 24); // correlation matrix size
+  if (M<=P) { return periodogram(x); } // fallback
+  // Build autocorrelation matrix R (M x M), biased estimate
+  const Rre = new Float64Array(M*M), Rim = new Float64Array(M*M);
+  for (let i=0;i<M;i++) for (let j=0;j<M;j++) {
+    let re=0,im=0;
+    for (let n=M-1;n<N;n++) { re+=x[n-i]*x[n-j]; }
+    Rre[i*M+j]=re/N; // real signal so R is real symmetric
+  }
+  // Eigendecompose via power iteration (simplified: use Jacobi or just compute eigenvectors)
+  // For a real symmetric matrix, use a simplified approach: compute via characteristic structure
+  // We'll use a numerically stable Jacobi eigen-solver for small M
+  const eigResult = jacobiEigen(Rre, M);
+  const {eigenvalues, eigenvectors} = eigResult;
+  // Sort descending
+  const idx = Array.from({length:M},(_,i)=>i).sort((a,b)=>eigenvalues[b]-eigenvalues[a]);
+  // Noise subspace: eigenvectors corresponding to M-P smallest eigenvalues
+  const noiseDim = M-P;
+  const En = []; // noise subspace columns
+  for (let k=P;k<M;k++) {
+    const col = new Float64Array(M);
+    for (let i=0;i<M;i++) col[i]=eigenvectors[i*M+idx[k]];
+    En.push(col);
+  }
+  // Compute pseudospectrum over [0, FS/2]
+  const nEvalPts = 512;
+  const freq = Array.from({length:nEvalPts},(_,i)=>i*FS/(2*(nEvalPts-1)));
+  const psd = freq.map(f=>{
+    // Steering vector a(f) = [1, e^{-j2pif/fs}, ..., e^{-j2pif(M-1)/fs}]
+    const aRe = Array.from({length:M},(_,k)=>Math.cos(-2*Math.PI*f*k/FS));
+    const aIm = Array.from({length:M},(_,k)=>Math.sin(-2*Math.PI*f*k/FS));
+    // Compute a^H En En^H a = ||En^H a||^2
+    let denom=0;
+    for (const en of En) {
+      let dotRe=0,dotIm=0;
+      for (let i=0;i<M;i++) { dotRe+=en[i]*aRe[i]; dotIm+=en[i]*aIm[i]; }
+      // en is real so en^H a = dot(en,aRe) + j*dot(en,aIm)
+      denom+=dotRe**2+dotIm**2;
+    }
+    return denom<1e-12 ? 1e12 : 1/denom;
+  });
+  return {freq, psd};
+}
+
+// Jacobi eigendecomposition for real symmetric matrix (flat row-major)
+function jacobiEigen(A, n) {
+  const a = Float64Array.from(A); // copy
+  const V = new Float64Array(n*n);
+  for (let i=0;i<n;i++) V[i*n+i]=1; // identity
+  const maxIter=100*n*n;
+  for (let iter=0;iter<maxIter;iter++) {
+    // Find largest off-diagonal
+    let maxVal=0,p=0,q=1;
+    for (let i=0;i<n-1;i++) for (let j=i+1;j<n;j++) {
+      const v=Math.abs(a[i*n+j]);
+      if(v>maxVal){maxVal=v;p=i;q=j;}
+    }
+    if(maxVal<1e-10) break;
+    const app=a[p*n+p],aqq=a[q*n+q],apq=a[p*n+q];
+    const theta=(aqq-app)/(2*apq);
+    const t=Math.sign(theta)/(Math.abs(theta)+Math.sqrt(1+theta*theta));
+    const c=1/Math.sqrt(1+t*t), s=t*c;
+    // Update A
+    const newApp=app-t*apq, newAqq=aqq+t*apq;
+    a[p*n+p]=newApp; a[q*n+q]=newAqq; a[p*n+q]=0; a[q*n+p]=0;
+    for (let r=0;r<n;r++) {
+      if(r===p||r===q) continue;
+      const arp=a[r*n+p],arq=a[r*n+q];
+      a[r*n+p]=a[p*n+r]=c*arp-s*arq;
+      a[r*n+q]=a[q*n+r]=s*arp+c*arq;
+    }
+    // Update eigenvectors
+    for (let r=0;r<n;r++) {
+      const vrp=V[r*n+p],vrq=V[r*n+q];
+      V[r*n+p]=c*vrp-s*vrq;
+      V[r*n+q]=s*vrp+c*vrq;
+    }
+  }
+  return {eigenvalues:Array.from({length:n},(_,i)=>a[i*n+i]), eigenvectors:V};
+}
+
+// Chirp-Z Transform (Bluestein's algorithm)
+// Evaluates DFT at M equally spaced frequencies from fStart to fEnd
+function czt(x, M, fStart, fEnd) {
+  const N = x.length;
+  const W = Math.exp(-2*Math.PI*1j); // conceptual
+  // W = e^{-j 2pi (fEnd-fStart)/((M-1)*FS)}
+  // A = e^{j 2pi fStart/FS}
+  const dF = (fEnd-fStart)/Math.max(M-1,1);
+  const AAngle = 2*Math.PI*fStart/FS;
+  const WAngle = -2*Math.PI*dF/FS;
+
+  // yn = x[n] * A^{-n} * W^{n^2/2}
+  const yRe = new Float64Array(N), yIm = new Float64Array(N);
+  for (let n=0;n<N;n++) {
+    const aAngle = -n*AAngle + 0.5*n*n*WAngle;
+    yRe[n] = x[n]*Math.cos(aAngle);
+    yIm[n] = x[n]*Math.sin(aAngle);
+  }
+
+  // Convolve with h[n] = W^{-n^2/2} via FFT
+  const L = nextPow2(N+M-1);
+  const hRe = new Float64Array(L), hIm = new Float64Array(L);
+  // h[n] for n = 0..M-1 and n = L-(N-1)..L-1 (wrap)
+  for (let n=0;n<Math.max(N,M);n++) {
+    const angle = -0.5*n*n*WAngle;
+    const cr=Math.cos(angle), ci=Math.sin(angle);
+    if (n<M) { hRe[n]=cr; hIm[n]=ci; }
+    if (n>0 && n<N) { hRe[L-n]=cr; hIm[L-n]=ci; }
+  }
+
+  // Pad y to L
+  const yRePad = new Float64Array(L), yImPad = new Float64Array(L);
+  for (let n=0;n<N;n++) { yRePad[n]=yRe[n]; yImPad[n]=yIm[n]; }
+
+  // FFT of y and h
+  fftInPlace(yRePad, yImPad);
+  fftInPlace(hRe, hIm);
+
+  // Multiply
+  const gRe = new Float64Array(L), gIm = new Float64Array(L);
+  for (let i=0;i<L;i++) {
+    gRe[i]=yRePad[i]*hRe[i]-yImPad[i]*hIm[i];
+    gIm[i]=yRePad[i]*hIm[i]+yImPad[i]*hRe[i];
+  }
+
+  // IFFT
+  for (let i=0;i<L;i++) gIm[i]=-gIm[i];
+  fftInPlace(gRe, gIm);
+  for (let i=0;i<L;i++) { gRe[i]/=L; gIm[i]=-gIm[i]/L; }
+
+  // Extract output and multiply by W^{k^2/2}
+  const outRe = new Float64Array(M), outIm = new Float64Array(M);
+  for (let k=0;k<M;k++) {
+    const angle = 0.5*k*k*WAngle;
+    outRe[k]=gRe[k]*Math.cos(angle)-gIm[k]*Math.sin(angle);
+    outIm[k]=gRe[k]*Math.sin(angle)+gIm[k]*Math.cos(angle);
+  }
+
+  const freq = Array.from({length:M},(_,k)=>fStart+k*dF);
+  const psd = Array.from({length:M},(_,k)=>(outRe[k]**2+outIm[k]**2)/N);
+  return {freq, psd};
+}
+
+function toDb(psd) { return psd.map(v=>10*Math.log10(Math.max(v,1e-14))); }
+
+function getTrueFreqs(type, f1, f2) {
+  if (type==='two') return [f1, f2];
+  if (type==='three') return [f1, f2, Math.min(f1+80,220)];
+  if (type==='chirpsin') return [f1]; // chirp is broadband
+  return [f1];
+}
+
+function update() {
+  const type = document.getElementById('sigtype').value;
+  const f1 = +document.getElementById('f1').value;
+  const f2 = +document.getElementById('f2').value;
+  const snr = +document.getElementById('snr').value;
+  const N = +document.getElementById('N').value;
+  const P = +document.getElementById('P').value;
+  const fstart = +document.getElementById('fstart').value;
+  const fend = Math.max(fstart+5, +document.getElementById('fend').value);
+  const showPgram = document.getElementById('cb-pgram').checked;
+  const showWelch = document.getElementById('cb-welch').checked;
+  const showMusic = document.getElementById('cb-music').checked;
+  const showCzt = document.getElementById('cb-czt').checked;
+
+  document.getElementById('v-f1').textContent=f1;
+  document.getElementById('v-f2').textContent=f2;
+  document.getElementById('v-snr').textContent=snr;
+  document.getElementById('v-N').textContent=N;
+  document.getElementById('v-P').textContent=P;
+  document.getElementById('v-fstart').textContent=fstart;
+  document.getElementById('v-fend').textContent=fend;
+
+  const {t, x} = generateSignal(type, f1, f2, N, snr);
+  const trueFreqs = getTrueFreqs(type, f1, f2);
+
+  // Plot 1: Time domain
+  Plotly.react('plot-time',
+    [{x:t,y:x,mode:'lines',line:{color:'#60a5fa',width:1},name:'x[n]'}],
+    {...lo, title:{text:`Time Domain Signal (N=${N}, SNR=${snr}dB)`,font:{size:13}},
+     xaxis:{...lo.xaxis,title:'Time (s)'}, yaxis:{...lo.yaxis,title:'Amplitude'}, showlegend:false},
+    {responsive:true});
+
+  // Compute spectra
+  const traces2 = [];
+  if (showPgram) {
+    const {freq,psd}=periodogram(x);
+    traces2.push({x:freq,y:toDb(psd),mode:'lines',name:'Periodogram',line:{color:'#60a5fa',width:1.5}});
+  }
+  if (showWelch) {
+    const {freq,psd}=welch(x);
+    traces2.push({x:freq,y:toDb(psd),mode:'lines',name:'Welch',line:{color:'#f59e0b',width:1.5}});
+  }
+  if (showMusic) {
+    const {freq,psd}=music(x,P);
+    const psdDb=toDb(psd);
+    const maxDb=Math.max(...psdDb);
+    traces2.push({x:freq,y:psdDb.map(v=>v-maxDb),mode:'lines',name:'MUSIC (norm)',line:{color:'#f472b6',width:1.5}});
+  }
+  // True frequency markers
+  const maxY2 = 20;
+  trueFreqs.forEach((f,i)=>traces2.push({
+    x:[f,f],y:[-80,maxY2],mode:'lines',
+    line:{color:'#ef4444',width:1,dash:'dash'},
+    name:i===0?'True freq':null,showlegend:i===0
+  }));
+
+  Plotly.react('plot-spectra', traces2,
+    {...lo, title:{text:'Spectrum Comparison',font:{size:13}},
+     xaxis:{...lo.xaxis,title:'Frequency (Hz)',range:[0,FS/2]},
+     yaxis:{...lo.yaxis,title:'Power (dB)'},
+     legend:{x:0.55,y:1}},
+    {responsive:true});
+
+  // Plot 3: CZT zoom
+  const cztTraces = [];
+  if (showCzt) {
+    const MCZT = 512;
+    const {freq:fCzt, psd:pCzt} = czt(x, MCZT, fstart, fend);
+    const pCztDb = toDb(pCzt);
+    const maxCzt = Math.max(...pCztDb);
+    cztTraces.push({x:fCzt,y:pCztDb.map(v=>v-maxCzt),mode:'lines',name:'CZT',line:{color:'#4ade80',width:2}});
+  }
+  // Also overlay periodogram in zoom range
+  if (showPgram) {
+    const {freq:fp,psd:pp}=periodogram(x);
+    const pDb=toDb(pp);
+    const maxDb=Math.max(...pDb);
+    const mask=fp.map((_,i)=>fp[i]>=fstart&&fp[i]<=fend);
+    const fSub=fp.filter((_,i)=>mask[i]);
+    const pSub=pDb.filter((_,i)=>mask[i]).map(v=>v-maxDb);
+    cztTraces.push({x:fSub,y:pSub,mode:'lines',name:'Periodogram',line:{color:'#60a5fa',width:1,dash:'dot'}});
+  }
+  trueFreqs.filter(f=>f>=fstart&&f<=fend).forEach((f,i)=>cztTraces.push({
+    x:[f,f],y:[-60,5],mode:'lines',line:{color:'#ef4444',width:1,dash:'dash'},
+    name:i===0?'True freq':null,showlegend:i===0
+  }));
+
+  Plotly.react('plot-czt', cztTraces,
+    {...lo, title:{text:`CZT Zoom [${fstart}–${fend} Hz]`,font:{size:13}},
+     xaxis:{...lo.xaxis,title:'Frequency (Hz)',range:[fstart,fend]},
+     yaxis:{...lo.yaxis,title:'Power (dB, norm)'},
+     legend:{x:0.55,y:1}},
+    {responsive:true});
+
+  // Plot 4: Resolution comparison — vary frequency separation
+  const df = FS/N; // periodogram resolution
+  const seps = Array.from({length:20},(_,i)=>df*0.1*(i+1)); // 0.1*df to 2*df
+  const resTraces = [];
+  // For each separation, check if periodogram can resolve
+  const resolvedPgram = seps.map(sep=>{
+    const f1r=100, f2r=100+sep;
+    const xr = Array.from({length:N},(_,i)=>Math.cos(2*Math.PI*f1r*i/FS)+Math.cos(2*Math.PI*f2r*i/FS));
+    const {psd:pr,freq:fr}=periodogram(xr);
+    // Find local maxima between f1r-3*df and f2r+3*df
+    const idxStart=Math.floor((f1r-3*df)*N/FS), idxEnd=Math.ceil((f2r+3*df)*N/FS);
+    let peakCount=0;
+    for (let k=Math.max(1,idxStart);k<Math.min(pr.length-1,idxEnd);k++) {
+      if(pr[k]>pr[k-1]&&pr[k]>pr[k+1]&&pr[k]>0.3*Math.max(...pr.slice(idxStart,idxEnd+1)))peakCount++;
+    }
+    return peakCount>=2?1:0;
+  });
+  const resolvedMusic = seps.map(sep=>{
+    const f1r=100, f2r=100+sep;
+    const xr = Array.from({length:N},(_,i)=>Math.cos(2*Math.PI*f1r*i/FS)+Math.cos(2*Math.PI*f2r*i/FS));
+    const {psd:pm,freq:fm}=music(xr,2);
+    // Check if two peaks exist
+    const flo=90,fhi=115;
+    const sub=fm.map((_,i)=>[fm[i],pm[i]]).filter(([f])=>f>=flo&&f<=fhi);
+    const pvals=sub.map(([,p])=>p);
+    const maxP=Math.max(...pvals);
+    let peakCount=0;
+    for(let k=1;k<pvals.length-1;k++) if(pvals[k]>pvals[k-1]&&pvals[k]>pvals[k+1]&&pvals[k]>0.3*maxP)peakCount++;
+    return peakCount>=2?1:0;
+  });
+  resTraces.push({x:seps.map(s=>s.toFixed(2)),y:resolvedPgram,mode:'lines+markers',name:'Periodogram',line:{color:'#60a5fa'},marker:{size:6}});
+  resTraces.push({x:seps.map(s=>s.toFixed(2)),y:resolvedMusic,mode:'lines+markers',name:'MUSIC',line:{color:'#f472b6'},marker:{size:6}});
+  resTraces.push({x:[df.toFixed(2),df.toFixed(2)],y:[0,1.1],mode:'lines',name:`Rayleigh limit (${df.toFixed(1)}Hz)`,line:{color:'#ef4444',dash:'dash',width:1}});
+
+  Plotly.react('plot-resolution', resTraces,
+    {...lo, title:{text:'Resolution: Can Two Tones Be Separated?',font:{size:13}},
+     xaxis:{...lo.xaxis,title:'Frequency separation (Hz)'},
+     yaxis:{...lo.yaxis,title:'Resolved (1=yes)',range:[-0.1,1.2]},
+     legend:{x:0.4,y:0.4}},
+    {responsive:true});
+}
+
+['sigtype','cb-pgram','cb-welch','cb-music','cb-czt'].forEach(id=>document.getElementById(id).addEventListener('change',update));
+['f1','f2','snr','N','P','fstart','fend'].forEach(id=>document.getElementById(id).addEventListener('input',function(){
+  const labels={'f1':'v-f1','f2':'v-f2','snr':'v-snr','N':'v-N','P':'v-P','fstart':'v-fstart','fend':'v-fend'};
+  if(labels[id]) document.getElementById(labels[id]).textContent=this.value;
+  update();
+}));
+update();
+</script>
+</body>
+</html>

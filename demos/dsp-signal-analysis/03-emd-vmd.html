@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+<link rel="stylesheet" href="../theme.css">
+<title>EMD &amp; VMD Decomposition</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="../theme.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Pretendard', 'Inter', system-ui, -apple-system, sans-serif; background: #111827; color: #d1d5db; }
+  .header { padding: 1.2rem 2rem; background: #1f2937; border-bottom: 1px solid #374151; }
+
+  .header-title { flex: 1; }
+  .header h1 { font-size: 1.4rem; font-weight: 600; }
+  .header p { font-size: 0.85rem; color: #9ca3af; margin-top: 0.3rem; }
+  .theme-toggle { background: #374151; border: none; color: #d1d5db; padding: 0.5rem; border-radius: 6px; cursor: pointer; }
+  .container { display: grid; grid-template-columns: 280px 1fr; height: calc(100vh - 80px); }
+  .controls { padding: 1.2rem; background: #1f2937; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; }
+  .control-group { background: #111827; border-radius: 8px; padding: 1rem; }
+  .control-group h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 0.7rem; }
+  label { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin-bottom: 0.3rem; }
+  label span.val { color: #60a5fa; font-family: monospace; }
+  input[type=range] { width: 100%; accent-color: #60a5fa; margin-bottom: 0.5rem; }
+  select { width: 100%; padding: 0.4rem; background: #1f2937; color: #d1d5db; border: 1px solid #374151; border-radius: 6px; font-size: 0.85rem; margin-bottom: 0.5rem; }
+  .plots { padding: 1rem; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 0.5rem; overflow: auto; }
+  .plot { background: #1f2937; border-radius: 8px; min-height: 200px; }
+  .info-box { background: #111827; border-radius: 8px; padding: 0.8rem 1rem; font-size: 0.8rem; line-height: 1.6; color: #9ca3af; }
+  .info-box code { color: #60a5fa; }
+  .btn { width: 100%; padding: 0.5rem; background: #2563eb; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-weight: 500; margin-bottom: 0.4rem; }
+  .btn:hover { background: #1d4ed8; }
+</style>
+</head>
+<body>
+<div class="header">
+  <a class="back-link" href="../index.html" title="All demos">&larr;</a>
+  <div class="header-title">
+    <h1>EMD &amp; VMD Decomposition</h1>
+    <p>Huang et al. / Dragomiretskiy &amp; Zosso — Mode Decomposition</p>
+  </div>
+  <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"></button>
+</div>
+<div class="container">
+  <div class="controls">
+    <div class="control-group">
+      <h3>Signal</h3>
+      <select id="sigtype">
+        <option value="twotone">Two-Tone</option>
+        <option value="am">AM Signal</option>
+        <option value="chirpsin">Chirp + Sinusoid</option>
+        <option value="ecg">ECG-like</option>
+        <option value="multi">Noisy Multi-Component</option>
+      </select>
+      <label>f<sub>1</sub> (Hz) <span class="val" id="v-f1">5</span></label>
+      <input type="range" id="f1" min="1" max="40" step="0.5" value="5">
+      <label>f<sub>2</sub> (Hz) <span class="val" id="v-f2">20</span></label>
+      <input type="range" id="f2" min="2" max="80" step="0.5" value="20">
+      <label>f<sub>3</sub> (Hz) <span class="val" id="v-f3">45</span></label>
+      <input type="range" id="f3" min="5" max="120" step="0.5" value="45">
+      <label>Noise level <span class="val" id="v-noise">0.1</span></label>
+      <input type="range" id="noise" min="0" max="1" step="0.01" value="0.1">
+    </div>
+    <div class="control-group">
+      <h3>Method</h3>
+      <select id="method">
+        <option value="emd">EMD only</option>
+        <option value="vmd">VMD only</option>
+        <option value="both" selected>Compare Both</option>
+      </select>
+      <label>VMD: &alpha; (bandwidth) <span class="val" id="v-alpha">2000</span></label>
+      <input type="range" id="alpha" min="100" max="10000" step="100" value="2000">
+      <label>VMD: K (modes) <span class="val" id="v-K">3</span></label>
+      <input type="range" id="K" min="2" max="6" step="1" value="3">
+      <label>EMD: max sifting <span class="val" id="v-sift">50</span></label>
+      <input type="range" id="sift" min="10" max="200" step="10" value="50">
+    </div>
+    <div class="control-group">
+      <h3>Actions</h3>
+      <button class="btn" onclick="update()">Recompute</button>
+    </div>
+    <div class="info-box">
+      <strong>EMD</strong><br>
+      Data-driven, no basis. Suffers mode mixing when two close frequencies overlap.<br><br>
+      <strong>VMD</strong><br>
+      Variational optimization. <code>&alpha;</code> controls bandwidth (high = narrow modes). Requires K.<br><br>
+      <strong>Hilbert IF</strong><br>
+      <code>z(t) = x + j&middot;H{x}</code><br>
+      <code>f_inst = (1/2&pi;)&middot;d&phi;/dt</code>
+    </div>
+  </div>
+  <div class="plots">
+    <div class="plot" id="plot-original"></div>
+    <div class="plot" id="plot-emd"></div>
+    <div class="plot" id="plot-vmd"></div>
+    <div class="plot" id="plot-if"></div>
+  </div>
+</div>
+<script>
+var _t=THEMES[curTheme];var plotBg=_t.plotBg,paperBg=_t.paperBg,gridColor=_t.gridColor,textColor=_t.textColor;
+var lo={paper_bgcolor:paperBg,plot_bgcolor:plotBg,font:{color:textColor,size:11},margin:{t:40,r:16,b:40,l:55},xaxis:{gridcolor:gridColor,zerolinecolor:_t.zeroLine},yaxis:{gridcolor:gridColor,zerolinecolor:_t.zeroLine}};
+
+const FS = 256;
+const N_SIG = 512;
+
+function randn() {
+  let u=0,v=0;
+  while(u===0)u=Math.random();
+  while(v===0)v=Math.random();
+  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+}
+
+function generateSignal(type, f1, f2, f3, noiseLevel) {
+  const t = Array.from({length:N_SIG},(_,i)=>i/FS);
+  let x;
+  if (type==='twotone') {
+    x = t.map(v=>Math.cos(2*Math.PI*f1*v)+Math.cos(2*Math.PI*f2*v));
+  } else if (type==='am') {
+    x = t.map(v=>(1+0.5*Math.cos(2*Math.PI*f1*v))*Math.cos(2*Math.PI*f2*v));
+  } else if (type==='chirpsin') {
+    const f0=5, k=f2/(2*(N_SIG/FS));
+    x = t.map(v=>Math.cos(2*Math.PI*(f0*v+k*v*v))+0.8*Math.cos(2*Math.PI*f3*v));
+  } else if (type==='ecg') {
+    // Simplified ECG-like: sum of bursts
+    x = t.map(v=>{
+      const phase = (v * f1) % 1;
+      const qrs = Math.exp(-0.5*((phase-0.5)/0.02)**2);
+      const p = 0.3*Math.exp(-0.5*((phase-0.3)/0.08)**2);
+      const t_wave = 0.2*Math.exp(-0.5*((phase-0.7)/0.1)**2);
+      return qrs+p+t_wave+0.1*Math.cos(2*Math.PI*f2*v);
+    });
+  } else { // multi
+    x = t.map(v=>Math.cos(2*Math.PI*f1*v)+0.7*Math.cos(2*Math.PI*f2*v)+0.4*Math.cos(2*Math.PI*f3*v));
+  }
+  const noisy = x.map(v=>v+noiseLevel*randn());
+  return {t, x: noisy, xClean: x};
+}
+
+// Cubic spline interpolation (natural)
+function cubicSpline(xs, ys) {
+  const n = xs.length;
+  if (n < 2) return t => ys[0] || 0;
+  if (n < 3) { // linear fallback
+    return t => {
+      if (t<=xs[0]) return ys[0];
+      if (t>=xs[n-1]) return ys[n-1];
+      for (let i=0;i<n-1;i++) if(t>=xs[i]&&t<=xs[i+1]) {
+        const u=(t-xs[i])/(xs[i+1]-xs[i]);
+        return ys[i]*(1-u)+ys[i+1]*u;
+      }
+      return ys[n-1];
+    };
+  }
+  // Thomas algorithm for natural cubic spline
+  const h = Array.from({length:n-1},(_,i)=>xs[i+1]-xs[i]);
+  const alpha = Array.from({length:n-2},(_,i)=>3*(ys[i+2]-ys[i+1])/h[i+1]-3*(ys[i+1]-ys[i])/h[i]);
+  const l=[1,...Array(n-2).fill(0),1];
+  const mu=Array(n).fill(0);
+  const z=Array(n).fill(0);
+  for (let i=1;i<n-1;i++) {
+    l[i]=2*(xs[i+1]-xs[i-1])-h[i-1]*mu[i-1];
+    if(Math.abs(l[i])<1e-12)l[i]=1e-12;
+    mu[i]=h[i]/l[i];
+    z[i]=(alpha[i-1]-h[i-1]*z[i-1])/l[i];
+  }
+  const c=Array(n).fill(0),b=Array(n-1).fill(0),d=Array(n-1).fill(0);
+  for (let j=n-2;j>=0;j--) {
+    c[j]=z[j]-mu[j]*c[j+1];
+    b[j]=(ys[j+1]-ys[j])/h[j]-h[j]*(c[j+1]+2*c[j])/3;
+    d[j]=(c[j+1]-c[j])/(3*h[j]);
+  }
+  return t => {
+    if (t<=xs[0]) return ys[0];
+    if (t>=xs[n-1]) return ys[n-1];
+    let lo=0,hi=n-2;
+    while(lo<hi-1){const mid=(lo+hi)>>1;if(xs[mid]<=t)lo=mid;else hi=mid;}
+    const dt=t-xs[lo];
+    return ys[lo]+b[lo]*dt+c[lo]*dt*dt+d[lo]*dt*dt*dt;
+  };
+}
+
+// Find local extrema indices
+function findExtrema(x) {
+  const maxIdx=[], minIdx=[];
+  for (let i=1;i<x.length-1;i++) {
+    if(x[i]>x[i-1]&&x[i]>=x[i+1]) maxIdx.push(i);
+    if(x[i]<x[i-1]&&x[i]<=x[i+1]) minIdx.push(i);
+  }
+  return {maxIdx, minIdx};
+}
+
+// EMD: extract one IMF from signal
+function extractIMF(signal, maxSift) {
+  const N = signal.length;
+  let h = Float64Array.from(signal);
+  const t = Array.from({length:N},(_,i)=>i);
+  for (let sift=0;sift<maxSift;sift++) {
+    const {maxIdx,minIdx} = findExtrema(Array.from(h));
+    if (maxIdx.length<2||minIdx.length<2) break;
+    // Add boundary reflections
+    const mxIdx=[0,...maxIdx,N-1];
+    const mnIdx=[0,...minIdx,N-1];
+    const mxVals=[h[0],...maxIdx.map(i=>h[i]),h[N-1]];
+    const mnVals=[h[0],...minIdx.map(i=>h[i]),h[N-1]];
+    const upperFn = cubicSpline(mxIdx.map(i=>i), mxVals);
+    const lowerFn = cubicSpline(mnIdx.map(i=>i), mnVals);
+    let sdNum=0, sdDen=0, meanNorm=0;
+    for (let i=0;i<N;i++) {
+      const up=upperFn(i), lo=lowerFn(i);
+      const m=(up+lo)/2;
+      const prev=h[i];
+      h[i]=h[i]-m;
+      sdNum+=(prev-h[i])**2;
+      sdDen+=prev**2;
+      meanNorm+=m*m;
+    }
+    // Stopping criterion: SD < 0.2 or mean envelope small
+    const sd = sdDen>1e-12 ? sdNum/sdDen : 0;
+    if (sd<0.2 || meanNorm/(N*sdDen+1e-12)<0.001) break;
+  }
+  return h;
+}
+
+// Full EMD decomposition
+function emd(signal, maxSift, maxIMF) {
+  const imfs = [];
+  let r = Float64Array.from(signal);
+  for (let iter=0;iter<maxIMF;iter++) {
+    const {maxIdx,minIdx}=findExtrema(Array.from(r));
+    if(maxIdx.length<2||minIdx.length<2) break;
+    const imf=extractIMF(Array.from(r),maxSift);
+    imfs.push(Array.from(imf));
+    for(let i=0;i<r.length;i++) r[i]-=imf[i];
+    // Check if residual is monotonic
+    const {maxIdx:mx2,minIdx:mn2}=findExtrema(Array.from(r));
+    if(mx2.length<2&&mn2.length<2) break;
+  }
+  imfs.push(Array.from(r)); // residual
+  return imfs;
+}
+
+// FFT for VMD
+function nextPow2(n){let p=1;while(p<n)p<<=1;return p;}
+function fftInPlace(re,im){
+  const N=re.length;
+  for(let i=1,j=0;i<N;i++){
+    let bit=N>>1;
+    for(;j&bit;bit>>=1)j^=bit;
+    j^=bit;
+    if(i<j){let t=re[i];re[i]=re[j];re[j]=t;t=im[i];im[i]=im[j];im[j]=t;}
+  }
+  for(let len=2;len<=N;len<<=1){
+    const ang=-2*Math.PI/len,wR=Math.cos(ang),wI=Math.sin(ang);
+    for(let i=0;i<N;i+=len){
+      let cR=1,cI=0;
+      for(let j=0;j<len/2;j++){
+        const uR=re[i+j],uI=im[i+j];
+        const vR=re[i+j+len/2]*cR-im[i+j+len/2]*cI;
+        const vI=re[i+j+len/2]*cI+im[i+j+len/2]*cR;
+        re[i+j]=uR+vR;im[i+j]=uI+vI;
+        re[i+j+len/2]=uR-vR;im[i+j+len/2]=uI-vI;
+        const nr=cR*wR-cI*wI;cI=cR*wI+cI*wR;cR=nr;
+      }
+    }
+  }
+}
+function rfft(x){
+  const N=nextPow2(x.length);
+  const re=new Float64Array(N),im=new Float64Array(N);
+  for(let i=0;i<x.length;i++)re[i]=x[i];
+  fftInPlace(re,im);
+  return{re,im,N};
+}
+function irfft(re,im){
+  const N=re.length;
+  const r=Float64Array.from(re),i2=Float64Array.from(im);
+  for(let k=0;k<N;k++)i2[k]=-i2[k];
+  fftInPlace(r,i2);
+  for(let k=0;k<N;k++)i2[k]=-i2[k]/N;
+  return{re:r,im:i2};
+}
+
+// VMD (Variational Mode Decomposition)
+// Simplified but correct spectral-domain iterative algorithm
+function vmd(signal, K, alpha, maxIter=200, tol=1e-7) {
+  const N = signal.length;
+  const Nfft = nextPow2(N);
+  const halfN = Math.floor(Nfft/2)+1;
+
+  // FFT of signal (one-sided positive freqs)
+  const {re:fRe,im:fIm} = rfft(signal);
+  // f_hat: one-sided (k=0..halfN-1)
+  const fHatRe = fRe.slice(0,halfN);
+  const fHatIm = fIm.slice(0,halfN);
+
+  // Frequency axis (normalized: 0 to 0.5)
+  const omega = Array.from({length:halfN},(_,k)=>k/Nfft);
+
+  // Initialize modes in frequency domain
+  const uHatRe = Array.from({length:K},()=>new Float64Array(halfN));
+  const uHatIm = Array.from({length:K},()=>new Float64Array(halfN));
+  // Initialize center frequencies evenly spaced in [0, 0.5]
+  const omegaK = Array.from({length:K},(_,k)=>(k+0.5)/(2*K));
+
+  // Lagrange multiplier (one-sided frequency domain)
+  const lambdaRe = new Float64Array(halfN);
+  const lambdaIm = new Float64Array(halfN);
+
+  let prevSumRe, prevSumIm;
+
+  for (let iter=0;iter<maxIter;iter++) {
+    // Update each mode
+    for (let k=0;k<K;k++) {
+      // Compute sum of other modes: sum_{j!=k} u_j
+      const sumRe = new Float64Array(halfN);
+      const sumIm = new Float64Array(halfN);
+      for (let j=0;j<K;j++) if(j!==k) {
+        for(let w=0;w<halfN;w++){sumRe[w]+=uHatRe[j][w];sumIm[w]+=uHatIm[j][w];}
+      }
+      // Update u_k(omega) = [f_hat - sum_j!=k - lambda/2] / [1 + 2*alpha*(omega - omega_k)^2]
+      const wk = omegaK[k];
+      for (let w=0;w<halfN;w++) {
+        const denom = 1 + 2*alpha*(omega[w]-wk)**2;
+        uHatRe[k][w] = (fHatRe[w]-sumRe[w]-lambdaRe[w]*0.5)/denom;
+        uHatIm[k][w] = (fHatIm[w]-sumIm[w]-lambdaIm[w]*0.5)/denom;
+      }
+      // Update center frequency: omega_k = int omega |u_k|^2 dw / int |u_k|^2 dw
+      let num=0, den=0;
+      for(let w=0;w<halfN;w++){
+        const mag2=uHatRe[k][w]**2+uHatIm[k][w]**2;
+        num+=omega[w]*mag2; den+=mag2;
+      }
+      omegaK[k] = den>1e-12 ? Math.max(0,Math.min(0.5,num/den)) : wk;
+    }
+
+    // Update Lagrange multiplier: lambda += tau * (f_hat - sum_k u_k)
+    const tau = 0.1;
+    let change = 0;
+    const sumAllRe = new Float64Array(halfN);
+    const sumAllIm = new Float64Array(halfN);
+    for(let k=0;k<K;k++) for(let w=0;w<halfN;w++){sumAllRe[w]+=uHatRe[k][w];sumAllIm[w]+=uHatIm[k][w];}
+    for(let w=0;w<halfN;w++){
+      const dr=fHatRe[w]-sumAllRe[w], di=fHatIm[w]-sumAllIm[w];
+      lambdaRe[w]+=tau*dr; lambdaIm[w]+=tau*di;
+      change+=dr*dr+di*di;
+    }
+    if (iter>5 && change<tol*halfN) break;
+  }
+
+  // Reconstruct modes in time domain via IFFT
+  const modes = [];
+  for (let k=0;k<K;k++) {
+    // Build full spectrum (conjugate symmetric)
+    const fullRe = new Float64Array(Nfft), fullIm = new Float64Array(Nfft);
+    fullRe[0]=uHatRe[k][0]; fullIm[0]=uHatIm[k][0];
+    for(let w=1;w<halfN;w++){
+      fullRe[w]=uHatRe[k][w]; fullIm[w]=uHatIm[k][w];
+      if(w<Nfft/2){ fullRe[Nfft-w]=uHatRe[k][w]; fullIm[Nfft-w]=-uHatIm[k][w]; }
+    }
+    const {re,im}=irfft(fullRe,fullIm);
+    modes.push(Array.from(re.slice(0,N)));
+    // (imaginary part should be near zero for real signal)
+  }
+  return {modes, omegaK: omegaK.map(w=>w*FS)};
+}
+
+// Hilbert transform via FFT (analytic signal)
+function hilbert(x) {
+  const N = x.length;
+  const Nfft = nextPow2(N);
+  const re = new Float64Array(Nfft), im = new Float64Array(Nfft);
+  for(let i=0;i<N;i++) re[i]=x[i];
+  fftInPlace(re,im);
+  // Zero negative freqs, double positive freqs
+  const h = new Float64Array(Nfft);
+  h[0]=1; if(Nfft%2===0) h[Nfft/2]=1;
+  for(let k=1;k<Nfft/2;k++) h[k]=2;
+  for(let k=0;k<Nfft;k++){re[k]*=h[k];im[k]*=h[k];}
+  // IFFT
+  for(let k=0;k<Nfft;k++) im[k]=-im[k];
+  fftInPlace(re,im);
+  for(let k=0;k<Nfft;k++){im[k]=-im[k]/Nfft;}
+  // Analytic signal: re = original, im = Hilbert transform
+  return {re:Array.from(re.slice(0,N)),im:Array.from(im.slice(0,N))};
+}
+
+function instantFreq(x) {
+  const {re,im} = hilbert(x);
+  const N = x.length;
+  const phase = Array.from({length:N},(_,i)=>Math.atan2(im[i],re[i]));
+  // Unwrap phase
+  for(let i=1;i<N;i++){
+    while(phase[i]-phase[i-1]>Math.PI) phase[i]-=2*Math.PI;
+    while(phase[i]-phase[i-1]<-Math.PI) phase[i]+=2*Math.PI;
+  }
+  // Differentiate
+  const instF = new Float64Array(N);
+  for(let i=1;i<N-1;i++) instF[i]=FS*(phase[i+1]-phase[i-1])/(4*Math.PI);
+  instF[0]=instF[1]; instF[N-1]=instF[N-2];
+  // Clip to reasonable range
+  for(let i=0;i<N;i++) instF[i]=Math.max(0,Math.min(FS/2,instF[i]));
+  return instF;
+}
+
+const MODE_COLORS = ['#60a5fa','#f59e0b','#4ade80','#f472b6','#a78bfa','#34d399'];
+
+function stackedModeTraces(modes, t, label) {
+  const traces = [];
+  const spacing = 2.5;
+  modes.forEach((m,i)=>{
+    const offset = (modes.length-1-i)*spacing;
+    traces.push({
+      x: t, y: m.map(v=>v+offset),
+      mode: 'lines', name: `${label}${i+1}`,
+      line: {color: MODE_COLORS[i%MODE_COLORS.length], width: 1.5}
+    });
+  });
+  return traces;
+}
+
+function stackedIFTraces(modes, t) {
+  const traces = [];
+  modes.forEach((m,i)=>{
+    const instF = instantFreq(m);
+    traces.push({
+      x: t, y: Array.from(instF),
+      mode: 'lines', name: `Mode ${i+1}`,
+      line: {color: MODE_COLORS[i%MODE_COLORS.length], width: 1.5}
+    });
+  });
+  return traces;
+}
+
+function update() {
+  const type = document.getElementById('sigtype').value;
+  const f1 = +document.getElementById('f1').value;
+  const f2 = +document.getElementById('f2').value;
+  const f3 = +document.getElementById('f3').value;
+  const noise = +document.getElementById('noise').value;
+  const method = document.getElementById('method').value;
+  const alpha = +document.getElementById('alpha').value;
+  const K = +document.getElementById('K').value;
+  const maxSift = +document.getElementById('sift').value;
+
+  document.getElementById('v-f1').textContent=f1;
+  document.getElementById('v-f2').textContent=f2;
+  document.getElementById('v-f3').textContent=f3;
+  document.getElementById('v-noise').textContent=noise.toFixed(2);
+  document.getElementById('v-alpha').textContent=alpha;
+  document.getElementById('v-K').textContent=K;
+  document.getElementById('v-sift').textContent=maxSift;
+
+  const {t, x} = generateSignal(type, f1, f2, f3, noise);
+
+  // Plot original
+  Plotly.react('plot-original',
+    [{x:t,y:x,mode:'lines',line:{color:'#60a5fa',width:1.5},name:'x(t)'}],
+    {...lo,title:{text:'Original Signal',font:{size:13}},
+     xaxis:{...lo.xaxis,title:'Time (s)'},yaxis:{...lo.yaxis,title:'Amplitude'},showlegend:false},
+    {responsive:true});
+
+  // EMD
+  let emdIMFs = null;
+  if (method==='emd'||method==='both') {
+    emdIMFs = emd(x, maxSift, Math.min(K+2, 8));
+  }
+
+  // VMD
+  let vmdResult = null;
+  if (method==='vmd'||method==='both') {
+    vmdResult = vmd(x, K, alpha);
+  }
+
+  // Plot EMD
+  if (emdIMFs && emdIMFs.length>0) {
+    const traces = stackedModeTraces(emdIMFs, t, 'IMF');
+    const yMax = (emdIMFs.length)*2.5;
+    Plotly.react('plot-emd', traces,
+      {...lo,title:{text:`EMD — ${emdIMFs.length} IMFs + residual`,font:{size:13}},
+       xaxis:{...lo.xaxis,title:'Time (s)'},
+       yaxis:{...lo.yaxis,title:'IMF (offset)',showticklabels:false},
+       legend:{x:0.75,y:1},showlegend:true},
+      {responsive:true});
+  } else {
+    Plotly.react('plot-emd',[{x:t,y:x,mode:'lines',line:{color:'#6b7280'}}],
+      {...lo,title:{text:'EMD (not selected)',font:{size:13}},showlegend:false},{responsive:true});
+  }
+
+  // Plot VMD
+  if (vmdResult) {
+    const traces = stackedModeTraces(vmdResult.modes, t, 'Mode');
+    Plotly.react('plot-vmd', traces,
+      {...lo,title:{text:`VMD — ${K} modes (\u03b1=${alpha})`,font:{size:13}},
+       xaxis:{...lo.xaxis,title:'Time (s)'},
+       yaxis:{...lo.yaxis,title:'Mode (offset)',showticklabels:false},
+       legend:{x:0.75,y:1},showlegend:true},
+      {responsive:true});
+  } else {
+    Plotly.react('plot-vmd',[{x:t,y:x,mode:'lines',line:{color:'#6b7280'}}],
+      {...lo,title:{text:'VMD (not selected)',font:{size:13}},showlegend:false},{responsive:true});
+  }
+
+  // Plot instantaneous frequencies
+  const ifTraces = [];
+  if (emdIMFs && (method==='emd'||method==='both')) {
+    // Show IF for first few IMFs (skip residual)
+    const nShow = Math.min(emdIMFs.length-1, 4);
+    for (let i=0;i<nShow;i++) {
+      const instF = instantFreq(emdIMFs[i]);
+      ifTraces.push({x:t,y:Array.from(instF),mode:'lines',
+        name:`EMD IMF${i+1}`,
+        line:{color:MODE_COLORS[i%MODE_COLORS.length],width:1.5,dash:'solid'}});
+    }
+  }
+  if (vmdResult && (method==='vmd'||method==='both')) {
+    for (let i=0;i<vmdResult.modes.length;i++) {
+      const instF = instantFreq(vmdResult.modes[i]);
+      ifTraces.push({x:t,y:Array.from(instF),mode:'lines',
+        name:`VMD Mode${i+1}`,
+        line:{color:MODE_COLORS[i%MODE_COLORS.length],width:1.5,dash:'dash'}});
+    }
+  }
+  if (ifTraces.length===0) {
+    ifTraces.push({x:t,y:t.map(()=>0),mode:'lines',line:{color:'#6b7280'}});
+  }
+  Plotly.react('plot-if', ifTraces,
+    {...lo,title:{text:'Instantaneous Frequency (Hilbert)',font:{size:13}},
+     xaxis:{...lo.xaxis,title:'Time (s)'},
+     yaxis:{...lo.yaxis,title:'Frequency (Hz)',range:[0,FS/2]},
+     legend:{x:0.55,y:1},showlegend:true},
+    {responsive:true});
+}
+
+['sigtype','method'].forEach(id=>document.getElementById(id).addEventListener('change',update));
+['f1','f2','f3','noise','alpha','K','sift'].forEach(id=>document.getElementById(id).addEventListener('input',function(){
+  const labels={f1:'v-f1',f2:'v-f2',f3:'v-f3',noise:'v-noise',alpha:'v-alpha',K:'v-K',sift:'v-sift'};
+  if(labels[id]){
+    const val=id==='noise'?parseFloat(this.value).toFixed(2):this.value;
+    document.getElementById(labels[id]).textContent=val;
+  }
+}));
+// Recompute only on button press (VMD/EMD are expensive)
+// But still update display on slider move
+document.getElementById('sigtype').addEventListener('change', update);
+document.getElementById('method').addEventListener('change', update);
+update();
+</script>
+</body>
+</html>

@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+<link rel="stylesheet" href="../theme.css">
+<title>Radar Range Equation</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="../theme.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Pretendard', 'Inter', system-ui, -apple-system, sans-serif; background: #111827; color: #d1d5db; }
+  .header { padding: 1.2rem 2rem; background: #1f2937; border-bottom: 1px solid #374151; }
+  .header h1 { font-size: 1.4rem; font-weight: 600; }
+  .header p { font-size: 0.85rem; color: #9ca3af; margin-top: 0.3rem; }
+  .container { display: grid; grid-template-columns: 300px 1fr; height: calc(100vh - 80px); }
+  .controls { padding: 1.2rem; background: #1f2937; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; }
+  .control-group { background: #111827; border-radius: 8px; padding: 1rem; }
+  .control-group h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 0.7rem; }
+  label { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin-bottom: 0.3rem; }
+  label span.val { color: #60a5fa; font-family: monospace; }
+  input[type=range] { width: 100%; accent-color: #60a5fa; margin-bottom: 0.5rem; }
+  .plots { padding: 1rem; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 0.5rem; }
+  .plot { background: #1f2937; border-radius: 8px; }
+  .info-box { background: #111827; border-radius: 8px; padding: 0.8rem 1rem; font-size: 0.8rem; line-height: 1.6; color: #9ca3af; }
+  .info-box code { color: #60a5fa; }
+  .metric { display: flex; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid #1f2937; font-size: 0.82rem; }
+  .metric:last-child { border-bottom: none; }
+  .metric .label { color: #9ca3af; }
+  .metric .value { color: #60a5fa; font-family: monospace; font-weight: 600; }
+  .metric .value.good { color: #4ade80; }
+  .metric .value.bad { color: #ef4444; }
+</style>
+</head>
+<body>
+<div class="header">
+  <a class="back-link" href="../index.html" title="All demos">&larr;</a>
+  <div class="header-title">
+    <h1>Radar Range Equation</h1>
+    <p>Skolnik — Radar Fundamentals and Detection Range</p>
+  </div>
+  <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"></button>
+</div>
+<div class="container">
+  <div class="controls">
+    <div class="control-group">
+      <h3>Transmitter</h3>
+      <label>Peak Power P<sub>t</sub> (kW) <span class="val" id="v-pt">10</span></label>
+      <input type="range" id="pt" min="0.1" max="100" step="0.1" value="10">
+      <label>Antenna Gain G (dBi) <span class="val" id="v-G">30</span></label>
+      <input type="range" id="G" min="5" max="50" step="1" value="30">
+      <label>Frequency (GHz) <span class="val" id="v-freq">10</span></label>
+      <input type="range" id="freq" min="0.1" max="100" step="0.1" value="10">
+    </div>
+    <div class="control-group">
+      <h3>Target</h3>
+      <label>RCS &sigma; (m&sup2;) <span class="val" id="v-rcs">1</span></label>
+      <input type="range" id="rcs" min="0.001" max="100" step="0.001" value="1">
+      <label>Range (km) <span class="val" id="v-range">50</span></label>
+      <input type="range" id="range" min="1" max="300" step="1" value="50">
+    </div>
+    <div class="control-group">
+      <h3>Receiver</h3>
+      <label>Noise Figure F (dB) <span class="val" id="v-nf">4</span></label>
+      <input type="range" id="nf" min="1" max="10" step="0.5" value="4">
+      <label>Bandwidth B (MHz) <span class="val" id="v-bw">1</span></label>
+      <input type="range" id="bw" min="0.1" max="100" step="0.1" value="1">
+      <label>System Losses L (dB) <span class="val" id="v-loss">5</span></label>
+      <input type="range" id="loss" min="0" max="15" step="0.5" value="5">
+      <label>Required SNR (dB) <span class="val" id="v-snr-req">13</span></label>
+      <input type="range" id="snr-req" min="5" max="25" step="0.5" value="13">
+    </div>
+    <div class="control-group">
+      <h3>Results</h3>
+      <div class="metric"><span class="label">SNR at range</span><span class="value" id="m-snr">—</span></div>
+      <div class="metric"><span class="label">Max range R<sub>max</sub></span><span class="value" id="m-rmax">—</span></div>
+      <div class="metric"><span class="label">Detection?</span><span class="value" id="m-det">—</span></div>
+    </div>
+    <div class="info-box">
+      <strong>Radar Range Equation</strong><br>
+      <code>SNR = P<sub>t</sub>G&sup2;&lambda;&sup2;&sigma; / ((4&pi;)&sup3;R&sup4;kT<sub>0</sub>BFL)</code><br><br>
+      <strong>R<sup>4</sup> law:</strong> Doubling range reduces SNR by 12 dB!
+    </div>
+  </div>
+  <div class="plots">
+    <div class="plot" id="plot-snr-range"></div>
+    <div class="plot" id="plot-rmax-rcs"></div>
+    <div class="plot" id="plot-rmax-param"></div>
+    <div class="plot" id="plot-budget"></div>
+  </div>
+</div>
+<script>
+var _t=THEMES[curTheme];var plotBg=_t.plotBg,paperBg=_t.paperBg,gridColor=_t.gridColor,textColor=_t.textColor;
+var lo={paper_bgcolor:paperBg,plot_bgcolor:plotBg,font:{color:textColor,size:11},margin:{t:40,r:16,b:40,l:55},xaxis:{gridcolor:gridColor,zerolinecolor:_t.zeroLine},yaxis:{gridcolor:gridColor,zerolinecolor:_t.zeroLine}};
+
+const k = 1.38e-23, T0 = 290;
+
+function snrCalc(Pt_w, G_lin, lambda, sigma, R_m, B_hz, F_lin, L_lin) {
+  return (Pt_w * G_lin * G_lin * lambda * lambda * sigma) /
+         (Math.pow(4*Math.PI,3) * Math.pow(R_m,4) * k * T0 * B_hz * F_lin * L_lin);
+}
+
+function rmaxCalc(Pt_w, G_lin, lambda, sigma, B_hz, F_lin, L_lin, snrReq_lin) {
+  const num = Pt_w * G_lin * G_lin * lambda * lambda * sigma;
+  const den = Math.pow(4*Math.PI,3) * k * T0 * B_hz * F_lin * L_lin * snrReq_lin;
+  return Math.pow(num/den, 0.25);
+}
+
+function update() {
+  const Pt_kw=+document.getElementById('pt').value;
+  const G_dBi=+document.getElementById('G').value;
+  const freq_GHz=+document.getElementById('freq').value;
+  const sigma=+document.getElementById('rcs').value;
+  const R_km=+document.getElementById('range').value;
+  const NF_dB=+document.getElementById('nf').value;
+  const B_MHz=+document.getElementById('bw').value;
+  const L_dB=+document.getElementById('loss').value;
+  const snrReq_dB=+document.getElementById('snr-req').value;
+
+  document.getElementById('v-pt').textContent=Pt_kw;
+  document.getElementById('v-G').textContent=G_dBi;
+  document.getElementById('v-freq').textContent=freq_GHz;
+  document.getElementById('v-rcs').textContent=sigma;
+  document.getElementById('v-range').textContent=R_km;
+  document.getElementById('v-nf').textContent=NF_dB;
+  document.getElementById('v-bw').textContent=B_MHz;
+  document.getElementById('v-loss').textContent=L_dB;
+  document.getElementById('v-snr-req').textContent=snrReq_dB;
+
+  const Pt_w=Pt_kw*1e3, G_lin=Math.pow(10,G_dBi/10), lambda=0.3/freq_GHz;
+  const R_m=R_km*1e3, B_hz=B_MHz*1e6, F_lin=Math.pow(10,NF_dB/10), L_lin=Math.pow(10,L_dB/10);
+  const snrReq_lin=Math.pow(10,snrReq_dB/10);
+
+  const snr=snrCalc(Pt_w,G_lin,lambda,sigma,R_m,B_hz,F_lin,L_lin);
+  const snr_dB=10*Math.log10(snr);
+  const Rmax=rmaxCalc(Pt_w,G_lin,lambda,sigma,B_hz,F_lin,L_lin,snrReq_lin)/1e3;
+
+  document.getElementById('m-snr').textContent=snr_dB.toFixed(1)+' dB';
+  document.getElementById('m-rmax').textContent=Rmax.toFixed(1)+' km';
+  const detEl=document.getElementById('m-det');
+  detEl.textContent=snr_dB>=snrReq_dB?'YES':'NO';
+  detEl.className='value '+(snr_dB>=snrReq_dB?'good':'bad');
+
+  // Plot 1: SNR vs Range
+  const ranges=Array.from({length:300},(_,i)=>1+i);
+  const snrVsR=ranges.map(r=>10*Math.log10(snrCalc(Pt_w,G_lin,lambda,sigma,r*1e3,B_hz,F_lin,L_lin)));
+
+  Plotly.react('plot-snr-range',[
+    {x:ranges,y:snrVsR,mode:'lines',line:{color:'#60a5fa',width:2.5},name:'SNR'},
+    {x:[ranges[0],ranges[ranges.length-1]],y:[snrReq_dB,snrReq_dB],mode:'lines',line:{color:'#ef4444',width:1.5,dash:'dash'},name:`Threshold (${snrReq_dB} dB)`},
+    {x:[R_km],y:[snr_dB],mode:'markers',marker:{size:12,color:'#facc15',symbol:'star'},name:'Current'},
+    {x:[Rmax],y:[snrReq_dB],mode:'markers',marker:{size:10,color:'#4ade80',symbol:'triangle-up'},name:`Rmax=${Rmax.toFixed(0)} km`},
+  ],{...lo,title:{text:'SNR vs Range (R\u2074 law)',font:{size:13}},xaxis:{...lo.xaxis,title:'Range (km)'},yaxis:{...lo.yaxis,title:'SNR (dB)',range:[-10,60]},legend:{font:{size:9},x:0.55,y:1}},{responsive:true});
+
+  // Plot 2: Rmax vs RCS
+  const rcsValues=[0.001,0.01,0.1,0.5,1,2,5,10,20,50,100];
+  const rcsLabels=['0.001','0.01','0.1','0.5','1','2','5','10','20','50','100'];
+  const rmaxVsRcs=rcsValues.map(s=>rmaxCalc(Pt_w,G_lin,lambda,s,B_hz,F_lin,L_lin,snrReq_lin)/1e3);
+  const rcsNames=['Insect','Bird','Stealth','Small drone','Person','Car','Fighter','Truck','Ship','Boeing 747','Large ship'];
+
+  Plotly.react('plot-rmax-rcs',[
+    {x:rcsValues,y:rmaxVsRcs,mode:'lines+markers',line:{color:'#f472b6',width:2.5},marker:{size:8},name:'Rmax',
+     text:rcsNames,textposition:'top center',hovertemplate:'RCS=%{x} m\u00B2<br>Rmax=%{y:.1f} km<br>%{text}'},
+    {x:[sigma],y:[Rmax],mode:'markers',marker:{size:14,color:'#facc15',symbol:'star'},name:'Current'},
+  ],{...lo,title:{text:'Max Range vs RCS',font:{size:13}},xaxis:{...lo.xaxis,title:'RCS \u03C3 (m\u00B2)',type:'log'},yaxis:{...lo.yaxis,title:'R_max (km)'},legend:{x:0.65,y:0.1}},{responsive:true});
+
+  // Plot 3: Sensitivity analysis — Rmax vs each parameter
+  const paramSweep=(name,vals,fn)=>({name,x:vals,y:vals.map(fn)});
+  const ptRange=Array.from({length:50},(_,i)=>0.1+i*2);
+  const gRange=Array.from({length:50},(_,i)=>5+i);
+  const traces3=[
+    {x:ptRange,y:ptRange.map(p=>rmaxCalc(p*1e3,G_lin,lambda,sigma,B_hz,F_lin,L_lin,snrReq_lin)/1e3),mode:'lines',line:{color:'#60a5fa',width:2},name:'vs Pt (kW)',xaxis:'x',yaxis:'y'},
+  ];
+
+  Plotly.react('plot-rmax-param',[
+    {x:ptRange,y:ptRange.map(p=>rmaxCalc(p*1e3,G_lin,lambda,sigma,B_hz,F_lin,L_lin,snrReq_lin)/1e3),mode:'lines',line:{color:'#60a5fa',width:2},name:'Rmax vs Pt'},
+    {x:[Pt_kw],y:[Rmax],mode:'markers',marker:{size:12,color:'#facc15',symbol:'star'},name:'Current'},
+  ],{...lo,title:{text:'Rmax vs Tx Power (other params fixed)',font:{size:13}},xaxis:{...lo.xaxis,title:'Pt (kW)'},yaxis:{...lo.yaxis,title:'Rmax (km)'},legend:{x:0.6,y:0.1}},{responsive:true});
+
+  // Plot 4: Link budget waterfall
+  const Pt_dBW=10*Math.log10(Pt_w);
+  const G2=2*G_dBi;
+  const lambda_dB=20*Math.log10(lambda);
+  const sigma_dB=10*Math.log10(sigma);
+  const spread=-30*Math.log10(4*Math.PI);
+  const R4=-40*Math.log10(R_m);
+  const kT=-10*Math.log10(k*T0);
+  const B_dB=-10*Math.log10(B_hz);
+  const F_dBn=-NF_dB;
+  const L_dBn=-L_dB;
+
+  const labels=['Pt','2G','\u03BB\u00B2','\u03C3','(4\u03C0)\u00B3','R\u2074','kT0','B','F','L','= SNR'];
+  const vals=[Pt_dBW,G2,2*lambda_dB,sigma_dB,spread,R4,kT,B_dB,F_dBn,L_dBn,snr_dB];
+  const colors=vals.map((v,i)=>i===vals.length-1?(snr_dB>=snrReq_dB?'#4ade80':'#ef4444'):(v>=0?'#60a5fa':'#f472b6'));
+
+  Plotly.react('plot-budget',[{
+    x:labels,y:vals,type:'bar',marker:{color:colors},
+    text:vals.map(v=>v.toFixed(1)+' dB'),textposition:'outside',textfont:{size:9,color:textColor}
+  }],{...lo,title:{text:'Radar Equation Budget (dB terms)',font:{size:13}},xaxis:{...lo.xaxis},yaxis:{...lo.yaxis,title:'dB'}},{responsive:true});
+}
+
+['pt','G','freq','rcs','range','nf','bw','loss','snr-req'].forEach(id=>document.getElementById(id).addEventListener('input',update));
+update();
+</script>
+</body>
+</html>

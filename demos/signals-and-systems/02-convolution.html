@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+<link rel="stylesheet" href="../theme.css">
+<title>Convolution</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="../theme.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Pretendard', 'Inter', system-ui, -apple-system, sans-serif; background: #111827; color: #d1d5db; }
+  .header { padding: 1.2rem 2rem; background: #1f2937; border-bottom: 1px solid #374151; }
+  .header h1 { font-size: 1.4rem; font-weight: 600; }
+  .header p { font-size: 0.85rem; color: #9ca3af; margin-top: 0.3rem; }
+  .container { display: grid; grid-template-columns: 300px 1fr; height: calc(100vh - 80px); }
+  .controls { padding: 1.2rem; background: #1f2937; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; }
+  .control-group { background: #111827; border-radius: 8px; padding: 1rem; }
+  .control-group h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 0.7rem; }
+  label { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin-bottom: 0.3rem; }
+  label span.val { color: #60a5fa; font-family: monospace; }
+  input[type=range] { width: 100%; accent-color: #60a5fa; margin-bottom: 0.5rem; }
+  select { width: 100%; padding: 0.4rem; background: #1f2937; color: #d1d5db; border: 1px solid #374151; border-radius: 6px; font-size: 0.85rem; margin-bottom: 0.5rem; }
+  .plots { padding: 1rem; display: grid; grid-template-rows: 1fr 1fr 1fr; gap: 0.5rem; }
+  .plot { background: #1f2937; border-radius: 8px; }
+  .info-box { background: #111827; border-radius: 8px; padding: 0.8rem 1rem; font-size: 0.8rem; line-height: 1.6; color: #9ca3af; }
+  .info-box code { color: #60a5fa; }
+  .play-btn { width: 100%; padding: 0.5rem; background: #60a5fa; color: #111827; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.85rem; }
+  .play-btn:hover { background: #7dd3fc; }
+</style>
+</head>
+<body>
+<div class="header">
+  <a class="back-link" href="../index.html" title="All demos">&larr;</a>
+  <div class="header-title">
+    <h1>Convolution</h1>
+    <p>Oppenheim & Willsky, Ch. 2 — LTI Systems</p>
+  </div>
+  <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"></button>
+</div>
+<div class="container">
+  <div class="controls">
+    <div class="control-group">
+      <h3>Signal Pair</h3>
+      <select id="pair">
+        <option value="rect-rect">Rect * Rect (Triangle)</option>
+        <option value="rect-exp">Rect * Exponential</option>
+        <option value="exp-exp">Exponential * Exponential</option>
+        <option value="impulse-rect">Impulse * Rect (Identity)</option>
+        <option value="tri-rect">Triangle * Rect</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <h3>Sliding Parameter</h3>
+      <label>t<sub>0</sub> <span class="val" id="v-t0">-2.00</span></label>
+      <input type="range" id="t0" min="-3" max="5" step="0.02" value="-2">
+    </div>
+    <div class="control-group">
+      <h3>Animation</h3>
+      <button class="play-btn" id="play-btn" onclick="togglePlay()">&#9654; Play</button>
+    </div>
+    <div class="info-box">
+      <strong>Convolution</strong><br>
+      <code>y(t) = &int; f(&tau;) g(t-&tau;) d&tau;</code><br><br>
+      <strong>Steps:</strong><br>
+      1. Flip g(&tau;) &rarr; g(-&tau;)<br>
+      2. Shift by t<sub>0</sub> &rarr; g(t<sub>0</sub>-&tau;)<br>
+      3. Multiply f(&tau;)&middot;g(t<sub>0</sub>-&tau;)<br>
+      4. Integrate (shaded area) = y(t<sub>0</sub>)
+    </div>
+  </div>
+  <div class="plots">
+    <div class="plot" id="plot-signals"></div>
+    <div class="plot" id="plot-product"></div>
+    <div class="plot" id="plot-result"></div>
+  </div>
+</div>
+<script>
+var _t=THEMES[curTheme];var plotBg=_t.plotBg,paperBg=_t.paperBg,gridColor=_t.gridColor,textColor=_t.textColor;
+var lo = { paper_bgcolor: paperBg, plot_bgcolor: plotBg, font: { color: textColor, size: 11 }, margin: { t: 36, r: 20, b: 36, l: 50 }, xaxis: { gridcolor: gridColor, zerolinecolor:_t.zeroLine }, yaxis: { gridcolor: gridColor, zerolinecolor:_t.zeroLine } };
+
+const TAU = linspace(-4, 8, 2000);
+
+function linspace(a, b, n) { const d = (b - a) / (n - 1); return Array.from({ length: n }, (_, i) => a + i * d); }
+
+// Signal definitions
+function rect(t) { return (t >= 0 && t <= 1) ? 1 : 0; }
+function tri(t) { return (t >= 0 && t <= 1) ? t : (t > 1 && t <= 2) ? 2 - t : 0; }
+function expDecay(t) { return t >= 0 ? Math.exp(-1.5 * t) : 0; }
+function impulseApprox(t) { const w = 0.03; return (Math.abs(t) < w) ? 1 / (2 * w) : 0; }
+
+const PAIRS = {
+  'rect-rect': [rect, rect, 'rect(t, [0,1])', 'rect(t, [0,1])'],
+  'rect-exp': [rect, expDecay, 'rect(t, [0,1])', 'e^{-1.5t} u(t)'],
+  'exp-exp': [expDecay, expDecay, 'e^{-1.5t} u(t)', 'e^{-1.5t} u(t)'],
+  'impulse-rect': [impulseApprox, rect, '&delta;(t)', 'rect(t, [0,1])'],
+  'tri-rect': [tri, rect, 'tri(t)', 'rect(t, [0,1])'],
+};
+
+let playing = false, animId = null;
+
+function computeConv(f1, f2, tVals) {
+  const dt = TAU[1] - TAU[0];
+  return tVals.map(t => {
+    let s = 0;
+    for (let i = 0; i < TAU.length; i++) s += f1(TAU[i]) * f2(t - TAU[i]);
+    return s * dt;
+  });
+}
+
+function update() {
+  const t0 = +document.getElementById('t0').value;
+  document.getElementById('v-t0').textContent = t0.toFixed(2);
+  const [f1, f2, name1, name2] = PAIRS[document.getElementById('pair').value];
+
+  const f1Vals = TAU.map(v => f1(v));
+  const f2Shifted = TAU.map(v => f2(t0 - v));
+  const product = TAU.map((v, i) => f1Vals[i] * f2Shifted[i]);
+
+  // Plot 1: f1(tau) and f2(t0-tau)
+  Plotly.react('plot-signals', [
+    { x: TAU, y: f1Vals, mode: 'lines', line: { color: '#60a5fa', width: 2 }, name: 'f(\u03C4)' },
+    { x: TAU, y: f2Shifted, mode: 'lines', line: { color: '#f472b6', width: 2 }, name: 'g(t\u2080\u2212\u03C4)' },
+  ], { ...lo, title: { text: `f(\u03C4) and g(t\u2080\u2212\u03C4)  |  t\u2080 = ${t0.toFixed(2)}`, font: { size: 13 } }, xaxis: { ...lo.xaxis, title: '\u03C4', range: [-4, 6] }, yaxis: { ...lo.yaxis, range: [-0.3, 2.5] }, legend: { x: 0.8, y: 1 } }, { responsive: true });
+
+  // Plot 2: product with shaded area
+  Plotly.react('plot-product', [
+    { x: TAU, y: product, mode: 'lines', fill: 'tozeroy', fillcolor: 'rgba(250,204,21,0.25)', line: { color: '#facc15', width: 2 }, name: 'f(\u03C4)\u00B7g(t\u2080\u2212\u03C4)' },
+  ], { ...lo, title: { text: 'Product (shaded area = y(t\u2080))', font: { size: 13 } }, xaxis: { ...lo.xaxis, title: '\u03C4', range: [-4, 6] }, yaxis: { ...lo.yaxis, range: [-0.3, 2.5] } }, { responsive: true });
+
+  // Plot 3: convolution result
+  const tOut = linspace(-4, 8, 500);
+  const conv = computeConv(f1, f2, tOut);
+  const dt = TAU[1] - TAU[0];
+  let yAtT0 = 0;
+  for (let i = 0; i < TAU.length; i++) yAtT0 += f1(TAU[i]) * f2(t0 - TAU[i]);
+  yAtT0 *= dt;
+
+  Plotly.react('plot-result', [
+    { x: tOut, y: conv, mode: 'lines', line: { color: '#4ade80', width: 2.5 }, name: 'y(t) = f*g' },
+    { x: [t0], y: [yAtT0], mode: 'markers', marker: { size: 12, color: '#ef4444', symbol: 'circle' }, name: `y(${t0.toFixed(2)})` },
+  ], { ...lo, title: { text: 'Convolution Output y(t) = (f * g)(t)', font: { size: 13 } }, xaxis: { ...lo.xaxis, title: 't', range: [-4, 6] }, yaxis: { ...lo.yaxis, title: 'y(t)' }, legend: { x: 0.75, y: 1 } }, { responsive: true });
+}
+
+function togglePlay() {
+  playing = !playing;
+  document.getElementById('play-btn').innerHTML = playing ? '&#9632; Stop' : '&#9654; Play';
+  if (playing) animate();
+  else cancelAnimationFrame(animId);
+}
+
+function animate() {
+  if (!playing) return;
+  const slider = document.getElementById('t0');
+  let v = +slider.value + 0.03;
+  if (v > +slider.max) v = +slider.min;
+  slider.value = v;
+  update();
+  animId = requestAnimationFrame(animate);
+}
+
+document.getElementById('t0').addEventListener('input', update);
+document.getElementById('pair').addEventListener('change', update);
+update();
+</script>
+</body>
+</html>

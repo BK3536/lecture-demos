@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+<link rel="stylesheet" href="../theme.css">
+<title>Target Tracking — KF &amp; EKF</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="../theme.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Pretendard', 'Inter', system-ui, -apple-system, sans-serif; background: #111827; color: #d1d5db; }
+  .header { padding: 1.2rem 2rem; background: #1f2937; border-bottom: 1px solid #374151; }
+  .header h1 { font-size: 1.4rem; font-weight: 600; }
+  .header p { font-size: 0.85rem; color: #9ca3af; margin-top: 0.3rem; }
+  .container { display: grid; grid-template-columns: 280px 1fr; height: calc(100vh - 80px); }
+  .controls { padding: 1.2rem; background: #1f2937; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; }
+  .control-group { background: #111827; border-radius: 8px; padding: 1rem; }
+  .control-group h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 0.7rem; }
+  label { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin-bottom: 0.3rem; }
+  label span.val { color: #60a5fa; font-family: monospace; }
+  input[type=range] { width: 100%; accent-color: #60a5fa; margin-bottom: 0.5rem; }
+  select { width: 100%; padding: 0.4rem; background: #1f2937; color: #d1d5db; border: 1px solid #374151; border-radius: 6px; font-size: 0.85rem; margin-bottom: 0.5rem; }
+  .plots { padding: 1rem; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 0.5rem; }
+  .plot { background: #1f2937; border-radius: 8px; }
+  .info-box { background: #111827; border-radius: 8px; padding: 0.8rem 1rem; font-size: 0.8rem; line-height: 1.6; color: #9ca3af; }
+  .info-box code { color: #60a5fa; }
+  .metric { display: flex; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid #1f2937; font-size: 0.82rem; }
+  .metric:last-child { border-bottom: none; }
+  .metric .label { color: #9ca3af; }
+  .metric .value { color: #60a5fa; font-family: monospace; font-weight: 600; }
+  .checkbox-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; margin-bottom: 0.4rem; }
+  .checkbox-row input[type=checkbox] { accent-color: #60a5fa; width: 14px; height: 14px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <a class="back-link" href="../index.html" title="All demos">&larr;</a>
+  <div class="header-title">
+    <h1>Target Tracking &mdash; Kalman &amp; Extended Kalman Filter</h1>
+    <p>Bar-Shalom &mdash; Estimation with Applications to Tracking</p>
+  </div>
+  <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"></button>
+</div>
+<div class="container">
+  <div class="controls">
+    <div class="control-group">
+      <h3>Scenario &amp; Sensor</h3>
+      <select id="scenario">
+        <option value="straight">Straight line (CV)</option>
+        <option value="turn">Coordinated turn</option>
+        <option value="scurve">S-curve maneuver</option>
+      </select>
+      <select id="sensor">
+        <option value="xy">Range + Angle (EKF required)</option>
+        <option value="linear">X+Y direct (KF)</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <h3>Motion Model</h3>
+      <select id="model">
+        <option value="CV">Constant Velocity (CV)</option>
+        <option value="CA">Constant Acceleration (CA)</option>
+        <option value="CT">Coordinated Turn (CT)</option>
+      </select>
+      <label>Process noise q <span class="val" id="v-q">1.0</span></label>
+      <input type="range" id="qnoise" min="-3" max="2" step="0.25" value="0">
+    </div>
+    <div class="control-group">
+      <h3>Measurement Noise</h3>
+      <label>&sigma;<sub>r</sub> range (m) <span class="val" id="v-sr">20</span></label>
+      <input type="range" id="sr" min="1" max="100" step="1" value="20">
+      <label>&sigma;<sub>&theta;</sub> angle (deg) <span class="val" id="v-stheta">1.0</span></label>
+      <input type="range" id="stheta" min="0.1" max="10" step="0.1" value="1.0">
+    </div>
+    <div class="control-group">
+      <h3>Display</h3>
+      <div class="checkbox-row"><input type="checkbox" id="show-true" checked><label for="show-true" style="margin:0">True track</label></div>
+      <div class="checkbox-row"><input type="checkbox" id="show-meas" checked><label for="show-meas" style="margin:0">Measurements</label></div>
+      <div class="checkbox-row"><input type="checkbox" id="show-est" checked><label for="show-est" style="margin:0">KF/EKF estimate</label></div>
+      <div class="checkbox-row"><input type="checkbox" id="show-cov" checked><label for="show-cov" style="margin:0">Covariance ellipses</label></div>
+    </div>
+    <div class="control-group">
+      <h3>Performance</h3>
+      <div class="metric"><span class="label">RMSE position</span><span class="value" id="m-rmse">—</span></div>
+      <div class="metric"><span class="label">Filter type</span><span class="value" id="m-ftype">—</span></div>
+      <div class="metric"><span class="label">Consistent?</span><span class="value" id="m-consist">—</span></div>
+      <div class="metric"><span class="label">Model match</span><span class="value" id="m-match">—</span></div>
+    </div>
+    <div class="info-box">
+      <strong>KF:</strong> optimal for linear Gaussian<br>
+      <code>x&#770; = Fx + Bu, P = FPF' + Q</code><br>
+      <code>K = PH'(HPH'+R)&#8315;&sup1;</code><br><br>
+      <strong>EKF:</strong> linearizes h(x) via Jacobian<br>
+      <code>h(x) = [&radic;(x&sup2;+y&sup2;), atan2(y,x)]</code><br>
+      <code>H = &part;h/&part;x</code> (Jacobian)<br><br>
+      Process noise q: too small &rarr; lag on turns; too large &rarr; noisy estimates<br>
+      Wrong model (CV on turns) &rarr; large RMSE
+    </div>
+  </div>
+  <div class="plots">
+    <div class="plot" id="plot-track"></div>
+    <div class="plot" id="plot-error"></div>
+    <div class="plot" id="plot-innov"></div>
+    <div class="plot" id="plot-rmse-bar"></div>
+  </div>
+</div>
+<script>
+var _t=THEMES[curTheme];var plotBg=_t.plotBg,paperBg=_t.paperBg,gridColor=_t.gridColor,textColor=_t.textColor;
+var lo={paper_bgcolor:paperBg,plot_bgcolor:plotBg,font:{color:textColor,size:11},margin:{t:40,r:16,b:40,l:50},xaxis:{gridcolor:gridColor,zerolinecolor:_t.zeroLine},yaxis:{gridcolor:gridColor,zerolinecolor:_t.zeroLine}};
+
+const DT = 1.0;   // time step (s)
+const N_STEPS = 80;
+
+// --- Matrix utilities (flat row-major arrays, size stored separately) ---
+function matMul(A, ra, ca, B, rb, cb) {
+  // A: ra x ca, B: rb x cb (ca must equal rb)
+  const C = new Array(ra * cb).fill(0);
+  for (let i = 0; i < ra; i++)
+    for (let k = 0; k < ca; k++)
+      for (let j = 0; j < cb; j++)
+        C[i * cb + j] += A[i * ca + k] * B[k * cb + j];
+  return C;
+}
+function matAdd(A, B) { return A.map((v, i) => v + B[i]); }
+function matSub(A, B) { return A.map((v, i) => v - B[i]); }
+function matScale(A, s) { return A.map(v => v * s); }
+function transpose(A, r, c) {
+  const T = new Array(r * c);
+  for (let i = 0; i < r; i++) for (let j = 0; j < c; j++) T[j * r + i] = A[i * c + j];
+  return T;
+}
+function eye(n) { const I = new Array(n * n).fill(0); for (let i = 0; i < n; i++) I[i * n + i] = 1; return I; }
+function zeros(r, c) { return new Array(r * c).fill(0); }
+
+// Invert small matrix (2x2 or 4x4) using cofactor / Gaussian elimination
+function matInv(A, n) {
+  // Gaussian elimination with partial pivoting
+  const M = A.map((v, i) => v); // copy
+  const I = eye(n);
+  for (let col = 0; col < n; col++) {
+    // Find pivot
+    let maxRow = col, maxVal = Math.abs(M[col * n + col]);
+    for (let row = col + 1; row < n; row++) {
+      if (Math.abs(M[row * n + col]) > maxVal) { maxVal = Math.abs(M[row * n + col]); maxRow = row; }
+    }
+    // Swap rows
+    for (let j = 0; j < n; j++) {
+      [M[col * n + j], M[maxRow * n + j]] = [M[maxRow * n + j], M[col * n + j]];
+      [I[col * n + j], I[maxRow * n + j]] = [I[maxRow * n + j], I[col * n + j]];
+    }
+    const pivot = M[col * n + col];
+    if (Math.abs(pivot) < 1e-12) continue;
+    for (let j = 0; j < n; j++) { M[col * n + j] /= pivot; I[col * n + j] /= pivot; }
+    for (let row = 0; row < n; row++) {
+      if (row === col) continue;
+      const f = M[row * n + col];
+      for (let j = 0; j < n; j++) { M[row * n + j] -= f * M[col * n + j]; I[row * n + j] -= f * I[col * n + j]; }
+    }
+  }
+  return I;
+}
+
+// --- Generate true trajectory ---
+function genTrajectory(scenario) {
+  const xs = [], ys = [], vxs = [], vys = [];
+  let x = 0, y = 0, vx = 80, vy = 20;
+  for (let k = 0; k < N_STEPS; k++) {
+    xs.push(x); ys.push(y); vxs.push(vx); vys.push(vy);
+    switch (scenario) {
+      case 'straight':
+        x += vx * DT; y += vy * DT;
+        break;
+      case 'turn': {
+        // Coordinated turn at midpoint
+        const omega = k > 30 && k < 60 ? 3 * Math.PI / 180 : 0; // 3 deg/s turn rate
+        const newVx = vx * Math.cos(omega * DT) - vy * Math.sin(omega * DT);
+        const newVy = vx * Math.sin(omega * DT) + vy * Math.cos(omega * DT);
+        x += (vx + newVx) / 2 * DT; y += (vy + newVy) / 2 * DT;
+        vx = newVx; vy = newVy;
+        break;
+      }
+      case 'scurve': {
+        const omega = k < 25 ? 4 * Math.PI / 180 : k < 55 ? -4 * Math.PI / 180 : 0;
+        const newVx = vx * Math.cos(omega * DT) - vy * Math.sin(omega * DT);
+        const newVy = vx * Math.sin(omega * DT) + vy * Math.cos(omega * DT);
+        x += (vx + newVx) / 2 * DT; y += (vy + newVy) / 2 * DT;
+        vx = newVx; vy = newVy;
+        break;
+      }
+    }
+  }
+  return { xs, ys, vxs, vys };
+}
+
+// --- Build state transition matrix F ---
+function buildF(model, dt) {
+  switch (model) {
+    case 'CV': // [x, vx, y, vy]
+      return [1, dt, 0, 0,
+              0,  1, 0, 0,
+              0,  0, 1, dt,
+              0,  0, 0,  1];
+    case 'CA': // [x, vx, ax, y, vy, ay]
+      return [1, dt, 0.5*dt*dt, 0, 0,  0,
+              0,  1,        dt, 0, 0,  0,
+              0,  0,         1, 0, 0,  0,
+              0,  0,         0, 1, dt, 0.5*dt*dt,
+              0,  0,         0, 0,  1, dt,
+              0,  0,         0, 0,  0,  1];
+    case 'CT': // CV + turn rate as parameter (fixed omega=0, updated externally)
+      return [1, dt, 0, 0,
+              0,  1, 0, 0,
+              0,  0, 1, dt,
+              0,  0, 0,  1];
+  }
+}
+
+// --- Build process noise Q ---
+function buildQ(model, dt, q) {
+  switch (model) {
+    case 'CV': {
+      const q2 = q * dt * dt, q3 = q * dt * dt * dt / 3, q1 = q * dt;
+      return [q3, q2/2,    0,    0,
+              q2/2, q1,    0,    0,
+              0,    0,  q3, q2/2,
+              0,    0, q2/2, q1];
+    }
+    case 'CA': {
+      const dt2 = dt*dt, dt3 = dt*dt*dt, dt4 = dt*dt*dt*dt, dt5 = dt*dt*dt*dt*dt;
+      const q_ = q;
+      // 6x6 for [x,vx,ax, y,vy,ay]
+      return [
+        q_*dt5/20, q_*dt4/8, q_*dt3/6, 0, 0, 0,
+        q_*dt4/8,  q_*dt3/3, q_*dt2/2, 0, 0, 0,
+        q_*dt3/6,  q_*dt2/2, q_*dt,    0, 0, 0,
+        0, 0, 0, q_*dt5/20, q_*dt4/8, q_*dt3/6,
+        0, 0, 0, q_*dt4/8,  q_*dt3/3, q_*dt2/2,
+        0, 0, 0, q_*dt3/6,  q_*dt2/2, q_*dt
+      ];
+    }
+    case 'CT': {
+      const q2 = q * dt * dt, q3 = q * dt * dt * dt / 3, q1 = q * dt;
+      return [q3, q2/2,    0,    0,
+              q2/2, q1,    0,    0,
+              0,    0,  q3, q2/2,
+              0,    0, q2/2, q1];
+    }
+  }
+}
+
+// State dimension
+function stateDim(model) { return model === 'CA' ? 6 : 4; }
+
+// Extract [x, y] from state
+function getXY(state, model) {
+  if (model === 'CA') return [state[0], state[3]];
+  return [state[0], state[2]];
+}
+
+// Extract [vx, vy] from state
+function getVXVY(state, model) {
+  if (model === 'CA') return [state[1], state[4]];
+  return [state[1], state[3]];
+}
+
+// Build H matrix for linear (x,y) measurement
+function buildH_linear(model) {
+  if (model === 'CA') {
+    // Measures [x, y] from [x, vx, ax, y, vy, ay]
+    return [1, 0, 0, 0, 0, 0,
+            0, 0, 0, 1, 0, 0];
+  }
+  // CV/CT: measures [x, y] from [x, vx, y, vy]
+  return [1, 0, 0, 0,
+          0, 0, 1, 0];
+}
+
+// Build R matrix
+function buildR(sensor, sigmaR, sigmaTheta) {
+  if (sensor === 'linear') {
+    return [sigmaR * sigmaR, 0,
+            0, sigmaR * sigmaR];
+  }
+  // Range+angle: R = diag(sigmaR^2, sigmaTheta^2)
+  return [sigmaR * sigmaR, 0,
+          0, sigmaTheta * sigmaTheta];
+}
+
+// Nonlinear measurement h(x) for range+angle
+function measH(state, model) {
+  const [x, y] = getXY(state, model);
+  const r = Math.sqrt(x * x + y * y) || 1e-6;
+  const theta = Math.atan2(y, x);
+  return [r, theta];
+}
+
+// Jacobian of h(x) w.r.t. state (EKF linearization)
+function measJacobian(state, model) {
+  const [x, y] = getXY(state, model);
+  const r2 = x * x + y * y + 1e-12;
+  const r = Math.sqrt(r2);
+  // dh/dx = [x/r, 0, y/r, 0] (for [r, theta])
+  // dh_theta/dx = [-y/r^2, 0, x/r^2, 0]
+  if (model === 'CA') {
+    // state = [x, vx, ax, y, vy, ay]
+    return [x/r, 0, 0, y/r, 0, 0,
+            -y/r2, 0, 0, x/r2, 0, 0];
+  }
+  // state = [x, vx, y, vy]
+  return [x/r, 0, y/r, 0,
+          -y/r2, 0, x/r2, 0];
+}
+
+// Generate noisy measurements
+function genMeasurements(xs, ys, sensor, sigmaR, sigmaTheta) {
+  return xs.map((x, k) => {
+    const y = ys[k];
+    if (sensor === 'linear') {
+      return [x + sigmaR * randn(), y + sigmaR * randn()];
+    } else {
+      const r = Math.sqrt(x*x + y*y);
+      const theta = Math.atan2(y, x);
+      return [r + sigmaR * randn(), theta + sigmaTheta * randn()];
+    }
+  });
+}
+
+function randn() {
+  // Box-Muller
+  const u1 = Math.random() + 1e-10, u2 = Math.random();
+  return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+}
+
+// Run KF / EKF
+function runFilter(model, sensor, xs, ys, measurements, q, sigmaR, sigmaTheta) {
+  const n = stateDim(model);
+  const F = buildF(model, DT);
+  const Q = buildQ(model, DT, q);
+  const R = buildR(sensor, sigmaR, sigmaTheta);
+  const mDim = 2;
+
+  // Initial state: near first measurement
+  let state = new Array(n).fill(0);
+  const [x0, y0] = getXY([xs[0], 0, 0, ys[0], 0, 0], 'CA');
+  if (model === 'CA') {
+    state[0] = xs[0]; state[3] = ys[0];
+  } else {
+    state[0] = xs[0]; state[2] = ys[0];
+  }
+
+  // Initial covariance
+  let P = zeros(n, n);
+  for (let i = 0; i < n; i++) P[i * n + i] = 100 * 100;
+
+  const estX = [], estY = [], covList = [], innovList = [];
+
+  for (let k = 0; k < N_STEPS; k++) {
+    // Predict
+    const xPred = matMul(F, n, n, state, n, 1);
+    const FP = matMul(F, n, n, P, n, n);
+    const FT = transpose(F, n, n);
+    const PPred = matAdd(matMul(FP, n, n, FT, n, n), Q);
+
+    // Update
+    let innov, H, S, K;
+    if (sensor === 'linear') {
+      H = buildH_linear(model);
+      const z = measurements[k];
+      const Hx = matMul(H, mDim, n, xPred, n, 1);
+      innov = matSub(z, Hx);
+    } else {
+      // EKF: compute H as Jacobian at predicted state
+      H = measJacobian(xPred, model);
+      const z = measurements[k];
+      const hx = measH(xPred, model);
+      innov = [z[0] - hx[0], z[1] - hx[1]];
+      // Wrap angle innovation to [-pi, pi]
+      while (innov[1] > Math.PI) innov[1] -= 2 * Math.PI;
+      while (innov[1] < -Math.PI) innov[1] += 2 * Math.PI;
+    }
+
+    const HT = transpose(H, mDim, n);
+    const HP = matMul(H, mDim, n, PPred, n, n);
+    const HPHt = matMul(HP, mDim, n, HT, n, mDim);
+    S = matAdd(HPHt, R);
+    const Sinv = matInv(S, mDim);
+    const PHt = matMul(PPred, n, n, HT, n, mDim);
+    K = matMul(PHt, n, mDim, Sinv, mDim, mDim);
+
+    // State update
+    const Ki = matMul(K, n, mDim, innov, mDim, 1);
+    state = matAdd(xPred, Ki);
+
+    // Covariance update (Joseph form for stability)
+    const KH = matMul(K, n, mDim, H, mDim, n);
+    const IKH = matSub(eye(n), KH);
+    P = matMul(IKH, n, n, PPred, n, n);
+
+    const [ex, ey] = getXY(state, model);
+    estX.push(ex);
+    estY.push(ey);
+    covList.push(P.slice());
+    innovList.push(innov.slice());
+  }
+
+  return { estX, estY, covList, innovList };
+}
+
+// Compute covariance ellipse points (±2σ)
+function covEllipse(cx, cy, Pxx, Pyy, Pxy, nsig, npts) {
+  const theta = linspace(0, 2 * Math.PI, npts);
+  // Eigendecomposition of 2x2 [[Pxx, Pxy],[Pxy, Pyy]]
+  const trace = Pxx + Pyy;
+  const det = Pxx * Pyy - Pxy * Pxy;
+  const disc = Math.sqrt(Math.max(0, (trace / 2) ** 2 - det));
+  const l1 = trace / 2 + disc, l2 = trace / 2 - disc;
+  const angle = Math.atan2(l1 - Pxx, Pxy) || 0;
+  const a = nsig * Math.sqrt(Math.max(l1, 0));
+  const b = nsig * Math.sqrt(Math.max(l2, 0));
+  const ex = theta.map(t => cx + a * Math.cos(t) * Math.cos(angle) - b * Math.sin(t) * Math.sin(angle));
+  const ey = theta.map(t => cy + a * Math.cos(t) * Math.sin(angle) + b * Math.sin(t) * Math.cos(angle));
+  return { ex, ey };
+}
+
+function linspace(a, b, n) {
+  const arr = [];
+  for (let i = 0; i < n; i++) arr.push(a + (b - a) * i / (n - 1));
+  return arr;
+}
+
+function rmse(xs, ys, estX, estY) {
+  let s = 0;
+  for (let k = 0; k < xs.length; k++) s += (xs[k] - estX[k]) ** 2 + (ys[k] - estY[k]) ** 2;
+  return Math.sqrt(s / xs.length);
+}
+
+let lastMeasurements = null;
+let lastTraj = null;
+
+function update() {
+  const scenario = document.getElementById('scenario').value;
+  const sensor = document.getElementById('sensor').value;
+  const model = document.getElementById('model').value;
+  const q = Math.pow(10, +document.getElementById('qnoise').value);
+  const sigmaR = +document.getElementById('sr').value;
+  const sigmaTheta = +document.getElementById('stheta').value * Math.PI / 180;
+  const showTrue = document.getElementById('show-true').checked;
+  const showMeas = document.getElementById('show-meas').checked;
+  const showEst = document.getElementById('show-est').checked;
+  const showCov = document.getElementById('show-cov').checked;
+
+  document.getElementById('v-q').textContent = q.toFixed(3);
+  document.getElementById('v-sr').textContent = sigmaR;
+  document.getElementById('v-stheta').textContent = (+document.getElementById('stheta').value).toFixed(1);
+
+  const traj = genTrajectory(scenario);
+  const { xs, ys } = traj;
+  lastTraj = traj;
+
+  const measurements = genMeasurements(xs, ys, sensor, sigmaR, sigmaTheta);
+  lastMeasurements = measurements;
+
+  const { estX, estY, covList, innovList } = runFilter(model, sensor, xs, ys, measurements, q, sigmaR, sigmaTheta);
+
+  // RMSE
+  const rmsePx = rmse(xs, ys, estX, estY);
+
+  // Filter consistency: NIS test (normalized innovation squared)
+  // Rough check: average innovation should be ~white noise
+  const innov0 = innovList.map(v => v[0]);
+  const innov1 = innovList.map(v => v[1]);
+  const innov0Mean = innov0.reduce((a, b) => a + b, 0) / innov0.length;
+  const innov0Std = Math.sqrt(innov0.map(v => v * v).reduce((a, b) => a + b, 0) / innov0.length);
+  const consistent = Math.abs(innov0Mean) < 2 * innov0Std / Math.sqrt(N_STEPS);
+
+  // Model match check
+  const modelMatchScenario = {
+    'straight': { 'CV': 'good', 'CA': 'ok', 'CT': 'ok' },
+    'turn': { 'CV': 'poor', 'CA': 'ok', 'CT': 'good' },
+    'scurve': { 'CV': 'poor', 'CA': 'ok', 'CT': 'good' }
+  };
+  const matchQuality = (modelMatchScenario[scenario] || {})[model] || '?';
+
+  document.getElementById('m-rmse').textContent = rmsePx.toFixed(1) + ' m';
+  document.getElementById('m-ftype').textContent = sensor === 'linear' ? 'KF (linear)' : 'EKF (nonlinear)';
+  document.getElementById('m-consist').textContent = consistent ? 'Yes' : 'No (check Q/R)';
+  document.getElementById('m-match').textContent = matchQuality.toUpperCase();
+
+  const timeIdx = linspace(0, N_STEPS - 1, N_STEPS);
+
+  // Measurement positions (for display, convert if range+angle)
+  let measX, measY;
+  if (sensor === 'linear') {
+    measX = measurements.map(m => m[0]);
+    measY = measurements.map(m => m[1]);
+  } else {
+    measX = measurements.map(m => m[0] * Math.cos(m[1]));
+    measY = measurements.map(m => m[0] * Math.sin(m[1]));
+  }
+
+  // --- Plot 1: 2D track ---
+  const trackTraces = [];
+  if (showTrue) trackTraces.push({ x: xs, y: ys, mode: 'lines', line: { color: '#4ade80', width: 2 }, name: 'True' });
+  if (showMeas) trackTraces.push({ x: measX, y: measY, mode: 'markers', marker: { size: 4, color: '#9ca3af', opacity: 0.7 }, name: 'Meas.' });
+  if (showEst) trackTraces.push({ x: estX, y: estY, mode: 'lines', line: { color: '#60a5fa', width: 2, dash: 'dash' }, name: `${model} est.` });
+
+  // Covariance ellipses at every 15 steps
+  const shapes = [];
+  if (showCov) {
+    for (let k = 5; k < N_STEPS; k += 15) {
+      const P = covList[k];
+      const n = stateDim(model);
+      let Pxx, Pyy, Pxy;
+      if (model === 'CA') {
+        Pxx = P[0 * n + 0]; Pyy = P[3 * n + 3]; Pxy = P[0 * n + 3];
+      } else {
+        Pxx = P[0 * n + 0]; Pyy = P[2 * n + 2]; Pxy = P[0 * n + 2];
+      }
+      const { ex, ey } = covEllipse(estX[k], estY[k], Pxx, Pyy, Pxy, 2, 32);
+      trackTraces.push({ x: ex, y: ey, mode: 'lines', line: { color: '#f472b6', width: 1, dash: 'dot' }, name: '2σ ellipse', showlegend: k === 5 });
+    }
+  }
+
+  Plotly.react('plot-track', trackTraces, {
+    ...lo, title: { text: `2D Track &mdash; ${scenario}, model=${model}`, font: { size: 13 } },
+    xaxis: { ...lo.xaxis, title: 'X (m)', scaleanchor: 'y' }, yaxis: { ...lo.yaxis, title: 'Y (m)' },
+    legend: { font: { size: 9 } }
+  }, { responsive: true });
+
+  // --- Plot 2: Position error vs time ---
+  const errX = xs.map((x, k) => estX[k] - x);
+  const errY = ys.map((y, k) => estY[k] - y);
+  const n = stateDim(model);
+  const sig3X = covList.map(P => {
+    const Pxx = model === 'CA' ? P[0] : P[0];
+    return 3 * Math.sqrt(Math.max(0, Pxx));
+  });
+  const sig3Y = covList.map(P => {
+    const Pyy = model === 'CA' ? P[3 * n + 3] : P[2 * n + 2];
+    return 3 * Math.sqrt(Math.max(0, Pyy));
+  });
+
+  Plotly.react('plot-error', [
+    { x: timeIdx, y: errX, mode: 'lines', line: { color: '#60a5fa', width: 1.5 }, name: 'X error' },
+    { x: timeIdx, y: errY, mode: 'lines', line: { color: '#4ade80', width: 1.5 }, name: 'Y error' },
+    { x: timeIdx, y: sig3X, mode: 'lines', line: { color: '#f472b6', width: 1, dash: 'dot' }, name: '+3σ X', fill: 'none' },
+    { x: timeIdx, y: sig3X.map(v => -v), mode: 'lines', line: { color: '#f472b6', width: 1, dash: 'dot' }, name: '-3σ X', showlegend: false }
+  ], {
+    ...lo, title: { text: 'Position Error vs Time', font: { size: 13 } },
+    xaxis: { ...lo.xaxis, title: 'Time step' }, yaxis: { ...lo.yaxis, title: 'Error (m)' },
+    legend: { font: { size: 9 } }
+  }, { responsive: true });
+
+  // --- Plot 3: Innovation sequence ---
+  const innov3sig = innov0Std * 3;
+  Plotly.react('plot-innov', [
+    { x: timeIdx, y: innov0, mode: 'lines+markers', marker: { size: 3 }, line: { color: '#60a5fa', width: 1.5 }, name: 'Innov. (range/x)' },
+    { x: [0, N_STEPS], y: [innov0Std * 3, innov0Std * 3], mode: 'lines', line: { color: '#ef4444', dash: 'dash', width: 1 }, name: '+3σ gate', showlegend: true },
+    { x: [0, N_STEPS], y: [-innov0Std * 3, -innov0Std * 3], mode: 'lines', line: { color: '#ef4444', dash: 'dash', width: 1 }, showlegend: false, name: '-3σ gate' }
+  ], {
+    ...lo, title: { text: `Innovation Sequence (${consistent ? 'consistent' : 'inconsistent'})`, font: { size: 13 } },
+    xaxis: { ...lo.xaxis, title: 'Time step' }, yaxis: { ...lo.yaxis, title: 'Innovation' },
+    legend: { font: { size: 9 } },
+    annotations: [{ xref: 'paper', yref: 'paper', x: 0.98, y: 0.98, text: consistent ? 'CONSISTENT' : 'INCONSISTENT', xanchor: 'right', showarrow: false, font: { color: consistent ? '#4ade80' : '#ef4444', size: 11, weight: 700 } }]
+  }, { responsive: true });
+
+  // --- Plot 4: Model comparison bar chart ---
+  const models = ['CV', 'CA', 'CT'];
+  const rmseVals = models.map(m => {
+    const { estX: eX, estY: eY } = runFilter(m, sensor, xs, ys, measurements, q, sigmaR, sigmaTheta);
+    return rmse(xs, ys, eX, eY);
+  });
+  const barColors = models.map(m => m === model ? '#60a5fa' : '#374151');
+
+  Plotly.react('plot-rmse-bar', [{
+    x: models, y: rmseVals, type: 'bar',
+    marker: { color: barColors },
+    text: rmseVals.map(v => v.toFixed(1) + ' m'),
+    textposition: 'outside',
+    textfont: { color: textColor, size: 10 }
+  }], {
+    ...lo, title: { text: `Model Comparison RMSE &mdash; ${scenario}`, font: { size: 13 } },
+    xaxis: { ...lo.xaxis, title: 'Motion Model' }, yaxis: { ...lo.yaxis, title: 'RMSE (m)', rangemode: 'tozero' },
+    annotations: [{ xref: 'paper', yref: 'paper', x: 0.5, y: 1.08, text: 'Active model highlighted', xanchor: 'center', showarrow: false, font: { color: '#9ca3af', size: 9 } }]
+  }, { responsive: true });
+}
+
+['scenario', 'sensor', 'model'].forEach(id => document.getElementById(id).addEventListener('change', update));
+['qnoise', 'sr', 'stheta'].forEach(id => document.getElementById(id).addEventListener('input', update));
+['show-true', 'show-meas', 'show-est', 'show-cov'].forEach(id => document.getElementById(id).addEventListener('change', update));
+update();
+</script>
+</body>
+</html>

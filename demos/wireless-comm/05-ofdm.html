@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+<link rel="stylesheet" href="../theme.css">
+<title>OFDM System</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="../theme.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Pretendard', 'Inter', system-ui, -apple-system, sans-serif; background: #111827; color: #d1d5db; }
+  .header { padding: 1.2rem 2rem; background: #1f2937; border-bottom: 1px solid #374151; }
+  .header h1 { font-size: 1.4rem; font-weight: 600; }
+  .header p { font-size: 0.85rem; color: #9ca3af; margin-top: 0.3rem; }
+  .container { display: grid; grid-template-columns: 280px 1fr; height: calc(100vh - 80px); }
+  .controls { padding: 1.2rem; background: #1f2937; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; }
+  .control-group { background: #111827; border-radius: 8px; padding: 1rem; }
+  .control-group h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 0.7rem; }
+  label { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin-bottom: 0.3rem; }
+  label span.val { color: #60a5fa; font-family: monospace; }
+  input[type=range] { width: 100%; accent-color: #60a5fa; margin-bottom: 0.5rem; }
+  select { width: 100%; padding: 0.4rem; background: #1f2937; color: #d1d5db; border: 1px solid #374151; border-radius: 6px; font-size: 0.85rem; margin-bottom: 0.5rem; }
+  .plots { padding: 1rem; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr 1fr; gap: 0.5rem; }
+  .plot { background: #1f2937; border-radius: 8px; }
+  .info-box { background: #111827; border-radius: 8px; padding: 0.8rem 1rem; font-size: 0.8rem; line-height: 1.6; color: #9ca3af; }
+  .info-box code { color: #60a5fa; }
+  .metric { display: flex; justify-content: space-between; padding: 0.25rem 0; border-bottom: 1px solid #1f2937; }
+  .metric:last-child { border-bottom: none; }
+  .metric .label { color: #9ca3af; font-size: 0.8rem; }
+  .metric .value { color: #60a5fa; font-family: monospace; font-weight: 600; font-size: 0.8rem; }
+</style>
+</head>
+<body>
+<div class="header">
+  <a class="back-link" href="../index.html" title="All demos">&larr;</a>
+  <div class="header-title">
+    <h1>OFDM System</h1>
+    <p>Goldsmith — Orthogonal Frequency Division Multiplexing</p>
+  </div>
+  <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"></button>
+</div>
+<div class="container">
+  <div class="controls">
+    <div class="control-group">
+      <h3>OFDM Parameters</h3>
+      <label>N subcarriers <span class="val" id="v-nsc">16</span></label>
+      <input type="range" id="nsc" min="4" max="64" step="4" value="16">
+      <label>CP length (samples) <span class="val" id="v-cp">4</span></label>
+      <input type="range" id="cp" min="0" max="16" step="1" value="4">
+      <label>Modulation <span class="val" id="v-mod"></span></label>
+      <select id="mod">
+        <option value="QPSK">QPSK</option>
+        <option value="16QAM">16-QAM</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <h3>Channel</h3>
+      <label>Max delay (samples) <span class="val" id="v-delay">3</span></label>
+      <input type="range" id="delay" min="0" max="16" step="1" value="3">
+      <label>SNR (dB) <span class="val" id="v-snr">25</span></label>
+      <input type="range" id="snr" min="0" max="40" step="1" value="25">
+    </div>
+    <div class="control-group">
+      <h3>Metrics</h3>
+      <div class="metric"><span class="label">CP &ge; delay?</span><span class="value" id="m-cpok">-</span></div>
+      <div class="metric"><span class="label">SER (w/ CP)</span><span class="value" id="m-ser-cp">-</span></div>
+      <div class="metric"><span class="label">SER (no CP)</span><span class="value" id="m-ser-nocp">-</span></div>
+    </div>
+    <div class="info-box">
+      <strong>OFDM Key Idea</strong><br>
+      Split wideband channel into N narrowband flat-fading subchannels via IFFT/FFT.<br><br>
+      <strong>Cyclic Prefix:</strong> Prepend last CP samples to absorb multipath delay. If <code>CP &ge; L<sub>ch</sub></code>, no ISI/ICI.<br><br>
+      <strong>Equalization:</strong> Simple 1-tap per subcarrier:<br>
+      <code>X&#x0302;[k] = Y[k] / H[k]</code>
+    </div>
+  </div>
+  <div class="plots">
+    <div class="plot" id="plot-subcarriers"></div>
+    <div class="plot" id="plot-channel"></div>
+    <div class="plot" id="plot-tx"></div>
+    <div class="plot" id="plot-rx"></div>
+    <div class="plot" id="plot-const-cp"></div>
+    <div class="plot" id="plot-const-nocp"></div>
+  </div>
+</div>
+<script>
+var _t=THEMES[curTheme];var plotBg=_t.plotBg,paperBg=_t.paperBg,gridColor=_t.gridColor,textColor=_t.textColor;
+var lo={paper_bgcolor:paperBg,plot_bgcolor:plotBg,font:{color:textColor,size:11},margin:{t:40,r:16,b:40,l:50},xaxis:{gridcolor:gridColor,zerolinecolor:_t.zeroLine},yaxis:{gridcolor:gridColor,zerolinecolor:_t.zeroLine}};
+
+function randn(){let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+
+function qpskConst(){return[{I:1,Q:1},{I:-1,Q:1},{I:-1,Q:-1},{I:1,Q:-1}].map(p=>({I:p.I/Math.SQRT2,Q:p.Q/Math.SQRT2}));}
+function qam16Const(){const pts=[];for(let i=-3;i<=3;i+=2)for(let q=-3;q<=3;q+=2)pts.push({I:i/Math.sqrt(10),Q:q/Math.sqrt(10)});return pts;}
+
+function ifft(Xre,Xim){
+  const N=Xre.length;const xre=new Float64Array(N),xim=new Float64Array(N);
+  for(let n=0;n<N;n++){for(let k=0;k<N;k++){const ang=2*Math.PI*k*n/N;xre[n]+=Xre[k]*Math.cos(ang)-Xim[k]*Math.sin(ang);xim[n]+=Xre[k]*Math.sin(ang)+Xim[k]*Math.cos(ang);}xre[n]/=N;xim[n]/=N;}
+  return{re:xre,im:xim};
+}
+function fft(xre,xim){
+  const N=xre.length;const Xre=new Float64Array(N),Xim=new Float64Array(N);
+  for(let k=0;k<N;k++){for(let n=0;n<N;n++){const ang=-2*Math.PI*k*n/N;Xre[k]+=xre[n]*Math.cos(ang)-xim[n]*Math.sin(ang);Xim[k]+=xre[n]*Math.sin(ang)+xim[n]*Math.cos(ang);}}
+  return{re:Xre,im:Xim};
+}
+
+function convReIm(xr,xi,hr,hi){
+  const N=xr.length,L=hr.length,M=N+L-1;
+  const yr=new Float64Array(M),yi=new Float64Array(M);
+  for(let n=0;n<N;n++)for(let k=0;k<L;k++){yr[n+k]+=xr[n]*hr[k]-xi[n]*hi[k];yi[n+k]+=xr[n]*hi[k]+xi[n]*hr[k];}
+  return{re:yr,im:yi};
+}
+
+function update(){
+  const Nsc=+document.getElementById('nsc').value;
+  const cpLen=+document.getElementById('cp').value;
+  const modType=document.getElementById('mod').value;
+  const maxDelay=+document.getElementById('delay').value;
+  const snrDb=+document.getElementById('snr').value;
+
+  document.getElementById('v-nsc').textContent=Nsc;
+  document.getElementById('v-cp').textContent=cpLen;
+  document.getElementById('v-delay').textContent=maxDelay;
+  document.getElementById('v-snr').textContent=snrDb;
+
+  const constellation=modType==='QPSK'?qpskConst():qam16Const();
+  const M=constellation.length;
+
+  // Generate channel impulse response
+  const Lch=maxDelay+1;
+  const hRe=Array.from({length:Lch},(_,i)=>Math.exp(-i*0.5)*(0.5+0.5*Math.random()));
+  const hIm=Array.from({length:Lch},(_,i)=>0.3*Math.exp(-i*0.5)*(Math.random()-0.5));
+  // Normalize
+  const hPow=hRe.reduce((s,v,i)=>s+v*v+hIm[i]*hIm[i],0);
+  const hNorm=Math.sqrt(hPow);
+  hRe.forEach((_,i)=>{hRe[i]/=hNorm;hIm[i]/=hNorm;});
+
+  // Channel frequency response
+  const Hre=new Float64Array(Nsc),Him=new Float64Array(Nsc);
+  for(let k=0;k<Nsc;k++){for(let n=0;n<Lch;n++){const ang=-2*Math.PI*k*n/Nsc;Hre[k]+=hRe[n]*Math.cos(ang)-hIm[n]*Math.sin(ang);Him[k]+=hRe[n]*Math.sin(ang)+hIm[n]*Math.cos(ang);}}
+  const Hmag=Array.from({length:Nsc},(_,k)=>Math.sqrt(Hre[k]**2+Him[k]**2));
+
+  // Generate random symbols
+  const nOFDM=10; // OFDM symbols for statistics
+  let errCP=0,errNoCP=0,totalSym=0;
+  const rxConstCP_I=[],rxConstCP_Q=[],rxConstNoCP_I=[],rxConstNoCP_Q=[];
+  const txConstI=[],txConstQ=[];
+
+  const noiseVar=Math.pow(10,-snrDb/10);
+  const noiseStd=Math.sqrt(noiseVar/2);
+
+  // Store first OFDM symbol for time-domain plot
+  let firstTxRe,firstTxIm,firstRxRe,firstRxIm;
+
+  for(let sym=0;sym<nOFDM;sym++){
+    // Random data symbols on each subcarrier
+    const dataIdx=Array.from({length:Nsc},()=>Math.floor(Math.random()*M));
+    const Xre=new Float64Array(Nsc),Xim=new Float64Array(Nsc);
+    dataIdx.forEach((idx,k)=>{Xre[k]=constellation[idx].I;Xim[k]=constellation[idx].Q;});
+
+    // IFFT -> time domain
+    const tx=ifft(Xre,Xim);
+
+    if(sym===0){firstTxRe=Array.from(tx.re);firstTxIm=Array.from(tx.im);}
+
+    // --- WITH CP ---
+    const txCP_re=new Float64Array(cpLen+Nsc);
+    const txCP_im=new Float64Array(cpLen+Nsc);
+    for(let i=0;i<cpLen;i++){txCP_re[i]=tx.re[Nsc-cpLen+i];txCP_im[i]=tx.im[Nsc-cpLen+i];}
+    for(let i=0;i<Nsc;i++){txCP_re[cpLen+i]=tx.re[i];txCP_im[cpLen+i]=tx.im[i];}
+
+    // Channel convolution
+    const rxFull=convReIm(Array.from(txCP_re),Array.from(txCP_im),hRe,hIm);
+    // Remove CP and take N samples
+    const rxRe_cp=new Float64Array(Nsc),rxIm_cp=new Float64Array(Nsc);
+    for(let i=0;i<Nsc;i++){
+      rxRe_cp[i]=(rxFull.re[cpLen+i]||0)+noiseStd*randn();
+      rxIm_cp[i]=(rxFull.im[cpLen+i]||0)+noiseStd*randn();
+    }
+
+    if(sym===0){firstRxRe=Array.from(rxRe_cp);firstRxIm=Array.from(rxIm_cp);}
+
+    // FFT
+    const Ycp=fft(rxRe_cp,rxIm_cp);
+    // 1-tap equalization
+    for(let k=0;k<Nsc;k++){
+      const den=Hre[k]**2+Him[k]**2+1e-10;
+      const eqRe=(Ycp.re[k]*Hre[k]+Ycp.im[k]*Him[k])/den;
+      const eqIm=(Ycp.im[k]*Hre[k]-Ycp.re[k]*Him[k])/den;
+      rxConstCP_I.push(eqRe);rxConstCP_Q.push(eqIm);
+      txConstI.push(Xre[k]);txConstQ.push(Xim[k]);
+      // Detect
+      let minD=Infinity,bestJ=0;
+      for(let j=0;j<M;j++){const d=(eqRe-constellation[j].I)**2+(eqIm-constellation[j].Q)**2;if(d<minD){minD=d;bestJ=j;}}
+      if(bestJ!==dataIdx[k])errCP++;
+      totalSym++;
+    }
+
+    // --- WITHOUT CP ---
+    const rxNoCP=convReIm(Array.from(tx.re),Array.from(tx.im),hRe,hIm);
+    const rxRe_nocp=new Float64Array(Nsc),rxIm_nocp=new Float64Array(Nsc);
+    for(let i=0;i<Nsc;i++){
+      rxRe_nocp[i]=(rxNoCP.re[i]||0)+noiseStd*randn();
+      rxIm_nocp[i]=(rxNoCP.im[i]||0)+noiseStd*randn();
+    }
+    const Ynocp=fft(rxRe_nocp,rxIm_nocp);
+    for(let k=0;k<Nsc;k++){
+      const den=Hre[k]**2+Him[k]**2+1e-10;
+      const eqRe=(Ynocp.re[k]*Hre[k]+Ynocp.im[k]*Him[k])/den;
+      const eqIm=(Ynocp.im[k]*Hre[k]-Ynocp.re[k]*Him[k])/den;
+      rxConstNoCP_I.push(eqRe);rxConstNoCP_Q.push(eqIm);
+      let minD=Infinity,bestJ=0;
+      for(let j=0;j<M;j++){const d=(eqRe-constellation[j].I)**2+(eqIm-constellation[j].Q)**2;if(d<minD){minD=d;bestJ=j;}}
+      if(bestJ!==dataIdx[k])errNoCP++;
+    }
+  }
+
+  const cpOk=cpLen>=maxDelay;
+  document.getElementById('m-cpok').textContent=cpOk?'YES':'NO -- ISI!';
+  document.getElementById('m-cpok').style.color=cpOk?'#4ade80':'#ef4444';
+  document.getElementById('m-ser-cp').textContent=(errCP/totalSym).toExponential(2);
+  document.getElementById('m-ser-nocp').textContent=(errNoCP/totalSym).toExponential(2);
+
+  // Plot 1: Subcarrier orthogonality
+  const scTraces=[];
+  const nShow=Math.min(Nsc,8);
+  const tNorm=Array.from({length:Nsc*4},(_,i)=>i/(Nsc*4));
+  for(let k=0;k<nShow;k++){
+    const y=tNorm.map(t=>Math.cos(2*Math.PI*k*t*Nsc));
+    scTraces.push({x:tNorm,y,mode:'lines',line:{width:1.5},name:`k=${k}`,opacity:0.7});
+  }
+  Plotly.react('plot-subcarriers',scTraces,{...lo,title:{text:`Subcarrier Waveforms (${nShow} of ${Nsc})`,font:{size:13}},xaxis:{...lo.xaxis,title:'Normalized Time'},yaxis:{...lo.yaxis,title:'Amplitude',range:[-1.3,1.3]},legend:{font:{size:9}}},{responsive:true});
+
+  // Plot 2: Channel frequency response
+  const scIdx=Array.from({length:Nsc},(_,i)=>i);
+  const HdB=Hmag.map(v=>20*Math.log10(Math.max(v,1e-6)));
+  Plotly.react('plot-channel',[
+    {x:scIdx,y:HdB,type:'bar',marker:{color:Hmag.map(v=>v<0.3?'#ef4444':'#60a5fa')},name:'|H[k]| (dB)'},
+  ],{...lo,title:{text:`Channel Freq Response (delay=${maxDelay} samples)`,font:{size:13}},xaxis:{...lo.xaxis,title:'Subcarrier Index k'},yaxis:{...lo.yaxis,title:'|H[k]| (dB)'}},{responsive:true});
+
+  // Plot 3: Time domain OFDM symbol
+  const txIdx=Array.from({length:Nsc},(_,i)=>i);
+  Plotly.react('plot-tx',[
+    {x:txIdx,y:firstTxRe,mode:'lines+markers',marker:{size:4},line:{color:'#60a5fa',width:1.5},name:'I (Tx)'},
+    {x:txIdx,y:firstTxIm,mode:'lines+markers',marker:{size:4},line:{color:'#f472b6',width:1.5},name:'Q (Tx)'},
+  ],{...lo,title:{text:'OFDM Symbol (Time Domain, 1st symbol)',font:{size:13}},xaxis:{...lo.xaxis,title:'Sample Index'},yaxis:{...lo.yaxis,title:'Amplitude'},legend:{x:0.7,y:1}},{responsive:true});
+
+  // Plot 4: Received time domain
+  Plotly.react('plot-rx',[
+    {x:txIdx,y:firstRxRe,mode:'lines+markers',marker:{size:4},line:{color:'#4ade80',width:1.5},name:'I (Rx)'},
+    {x:txIdx,y:firstRxIm,mode:'lines+markers',marker:{size:4},line:{color:'#facc15',width:1.5},name:'Q (Rx)'},
+  ],{...lo,title:{text:'Received (after channel + CP removal)',font:{size:13}},xaxis:{...lo.xaxis,title:'Sample Index'},yaxis:{...lo.yaxis,title:'Amplitude'},legend:{x:0.7,y:1}},{responsive:true});
+
+  // Plot 5: Constellation with CP
+  const cI=constellation.map(p=>p.I),cQ=constellation.map(p=>p.Q);
+  const axR=modType==='16QAM'?1.5:1.3;
+  Plotly.react('plot-const-cp',[
+    {x:rxConstCP_I,y:rxConstCP_Q,mode:'markers',marker:{size:3,color:'#60a5fa',opacity:0.5},name:'Rx'},
+    {x:cI,y:cQ,mode:'markers',marker:{size:10,color:'#ef4444',symbol:'cross'},name:'Ideal'},
+  ],{...lo,title:{text:`With CP (len=${cpLen}) — SER=${(errCP/totalSym).toExponential(1)}`,font:{size:13,color:cpOk?'#4ade80':'#facc15'}},xaxis:{...lo.xaxis,title:'I',range:[-axR,axR],scaleanchor:'y'},yaxis:{...lo.yaxis,title:'Q',range:[-axR,axR]},legend:{x:0.7,y:1}},{responsive:true});
+
+  // Plot 6: Constellation without CP
+  Plotly.react('plot-const-nocp',[
+    {x:rxConstNoCP_I,y:rxConstNoCP_Q,mode:'markers',marker:{size:3,color:'#facc15',opacity:0.5},name:'Rx'},
+    {x:cI,y:cQ,mode:'markers',marker:{size:10,color:'#ef4444',symbol:'cross'},name:'Ideal'},
+  ],{...lo,title:{text:`Without CP — SER=${(errNoCP/totalSym).toExponential(1)}`,font:{size:13,color:'#ef4444'}},xaxis:{...lo.xaxis,title:'I',range:[-axR,axR],scaleanchor:'y'},yaxis:{...lo.yaxis,title:'Q',range:[-axR,axR]},legend:{x:0.7,y:1}},{responsive:true});
+}
+
+['mod'].forEach(id=>document.getElementById(id).addEventListener('change',update));
+['nsc','cp','delay','snr'].forEach(id=>document.getElementById(id).addEventListener('input',update));
+update();
+</script>
+</body>
+</html>

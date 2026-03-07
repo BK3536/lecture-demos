@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+<link rel="stylesheet" href="../theme.css">
+<title>Matched Filter & Pulse Compression</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="../theme.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Pretendard', 'Inter', system-ui, -apple-system, sans-serif; background: #111827; color: #d1d5db; }
+  .header { padding: 1.2rem 2rem; background: #1f2937; border-bottom: 1px solid #374151; }
+  .header h1 { font-size: 1.4rem; font-weight: 600; }
+  .header p { font-size: 0.85rem; color: #9ca3af; margin-top: 0.3rem; }
+  .container { display: grid; grid-template-columns: 280px 1fr; height: calc(100vh - 80px); }
+  .controls { padding: 1.2rem; background: #1f2937; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; }
+  .control-group { background: #111827; border-radius: 8px; padding: 1rem; }
+  .control-group h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 0.7rem; }
+  label { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin-bottom: 0.3rem; }
+  label span.val { color: #60a5fa; font-family: monospace; }
+  input[type=range] { width: 100%; accent-color: #60a5fa; margin-bottom: 0.5rem; }
+  select { width: 100%; padding: 0.4rem; background: #1f2937; color: #d1d5db; border: 1px solid #374151; border-radius: 6px; font-size: 0.85rem; margin-bottom: 0.5rem; }
+  .plots { padding: 1rem; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr 1fr; gap: 0.5rem; }
+  .plot { background: #1f2937; border-radius: 8px; }
+  .info-box { background: #111827; border-radius: 8px; padding: 0.8rem 1rem; font-size: 0.8rem; line-height: 1.6; color: #9ca3af; }
+  .info-box code { color: #60a5fa; }
+  .metric { display: flex; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid #1f2937; font-size: 0.82rem; }
+  .metric:last-child { border-bottom: none; }
+  .metric .label { color: #9ca3af; }
+  .metric .value { color: #60a5fa; font-family: monospace; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="header">
+  <a class="back-link" href="../index.html" title="All demos">&larr;</a>
+  <div class="header-title">
+    <h1>Matched Filter & Pulse Compression</h1>
+    <p>Skolnik / Richards — Waveform Design and SNR Gain</p>
+  </div>
+  <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"></button>
+</div>
+<div class="container">
+  <div class="controls">
+    <div class="control-group">
+      <h3>Waveform</h3>
+      <select id="waveform">
+        <option value="rect">Rectangular Pulse</option>
+        <option value="lfm" selected>LFM Chirp</option>
+        <option value="barker13">Barker-13 (Phase Coded)</option>
+        <option value="mseq">m-sequence (L=127)</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <h3>Parameters</h3>
+      <label>Pulse Width (samples) <span class="val" id="v-pw">64</span></label>
+      <input type="range" id="pw" min="16" max="256" step="8" value="64">
+      <label>Bandwidth-Time Product BT <span class="val" id="v-bt">16</span></label>
+      <input type="range" id="bt" min="1" max="64" step="1" value="16">
+    </div>
+    <div class="control-group">
+      <h3>Scenario</h3>
+      <label>SNR input (dB) <span class="val" id="v-snr">-5</span></label>
+      <input type="range" id="snr" min="-20" max="20" step="1" value="-5">
+      <label>Target 2 delay (samples) <span class="val" id="v-delay2">100</span></label>
+      <input type="range" id="delay2" min="50" max="300" step="5" value="100">
+      <label>Target 2 amplitude <span class="val" id="v-amp2">0.5</span></label>
+      <input type="range" id="amp2" min="0" max="1.5" step="0.1" value="0.5">
+    </div>
+    <div class="control-group">
+      <h3>Metrics</h3>
+      <div class="metric"><span class="label">Processing Gain</span><span class="value" id="m-pg">—</span></div>
+      <div class="metric"><span class="label">Compression Ratio</span><span class="value" id="m-cr">—</span></div>
+      <div class="metric"><span class="label">Output SNR</span><span class="value" id="m-osnr">—</span></div>
+      <div class="metric"><span class="label">3dB Width</span><span class="value" id="m-3db">—</span></div>
+      <div class="metric"><span class="label">Peak Sidelobe (dB)</span><span class="value" id="m-psl">—</span></div>
+    </div>
+    <div class="info-box">
+      <strong>Matched Filter</strong><br>
+      <code>h(t) = s*(T-t)</code> (time-reversed conjugate)<br><br>
+      <strong>Processing gain = BT product</strong><br>
+      LFM: BT can be large (&gt;100)<br>
+      Barker: max BT=13<br>
+      m-seq: BT = code length<br><br>
+      Output SNR = Input SNR + 10log<sub>10</sub>(BT)
+    </div>
+  </div>
+  <div class="plots">
+    <div class="plot" id="plot-waveform"></div>
+    <div class="plot" id="plot-spectrum"></div>
+    <div class="plot" id="plot-noisy"></div>
+    <div class="plot" id="plot-mf-output"></div>
+    <div class="plot" id="plot-autocorr"></div>
+    <div class="plot" id="plot-comparison"></div>
+  </div>
+</div>
+<script>
+var _t=THEMES[curTheme];var plotBg=_t.plotBg,paperBg=_t.paperBg,gridColor=_t.gridColor,textColor=_t.textColor;
+var lo={paper_bgcolor:paperBg,plot_bgcolor:plotBg,font:{color:textColor,size:11},margin:{t:40,r:16,b:36,l:50},xaxis:{gridcolor:gridColor,zerolinecolor:_t.zeroLine},yaxis:{gridcolor:gridColor,zerolinecolor:_t.zeroLine}};
+
+function randn(){let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+
+function correlate(x, h) {
+  const N=x.length, M=h.length, L=N+M-1;
+  const out=new Float64Array(L);
+  for(let n=0;n<L;n++){
+    for(let k=0;k<M;k++){
+      const xi=n-k;
+      if(xi>=0&&xi<N) out[n]+=x[xi]*h[k];
+    }
+  }
+  return out;
+}
+
+function generateWaveform(type, pw, bt) {
+  let wf;
+  switch(type) {
+    case 'rect':
+      wf = new Float64Array(pw).fill(1);
+      break;
+    case 'lfm': {
+      wf = new Float64Array(pw);
+      const B = bt/pw; // normalized bandwidth
+      for(let i=0;i<pw;i++) {
+        const t = i/pw;
+        wf[i] = Math.cos(2*Math.PI*(B/2*t*t*pw));
+      }
+      break;
+    }
+    case 'barker13': {
+      const code = [1,1,1,1,1,-1,-1,1,1,-1,1,-1,1];
+      const chipsPerSample = Math.max(1, Math.round(pw/13));
+      wf = new Float64Array(13*chipsPerSample);
+      for(let i=0;i<wf.length;i++) wf[i] = code[Math.floor(i/chipsPerSample)];
+      break;
+    }
+    case 'mseq': {
+      // 7-bit LFSR, length 127
+      const n=7, taps=[7,6];
+      let reg=new Array(n).fill(1);
+      const seq=[];
+      for(let i=0;i<(1<<n)-1;i++){
+        seq.push(2*reg[n-1]-1);
+        const fb=taps.reduce((a,t)=>a^reg[t-1],0);
+        reg=[fb,...reg.slice(0,n-1)];
+      }
+      const chipsPerSample = Math.max(1, Math.round(pw/127));
+      wf = new Float64Array(seq.length*chipsPerSample);
+      for(let i=0;i<wf.length;i++) wf[i] = seq[Math.floor(i/chipsPerSample)];
+      break;
+    }
+  }
+  // Normalize energy
+  const E = wf.reduce((s,v)=>s+v*v,0);
+  const norm = Math.sqrt(E);
+  for(let i=0;i<wf.length;i++) wf[i]/=norm;
+  return wf;
+}
+
+function fftMag(x) {
+  const N=x.length, half=Math.floor(N/2);
+  const mag=new Float64Array(half);
+  for(let k=0;k<half;k++){
+    let re=0,im=0;
+    for(let n=0;n<N;n++){const a=-2*Math.PI*k*n/N;re+=x[n]*Math.cos(a);im+=x[n]*Math.sin(a);}
+    mag[k]=Math.sqrt(re*re+im*im)/N;
+  }
+  return mag;
+}
+
+function update() {
+  const wfType=document.getElementById('waveform').value;
+  const pw=+document.getElementById('pw').value;
+  const bt=+document.getElementById('bt').value;
+  const snrDb=+document.getElementById('snr').value;
+  const delay2=+document.getElementById('delay2').value;
+  const amp2=+document.getElementById('amp2').value;
+
+  document.getElementById('v-pw').textContent=pw;
+  document.getElementById('v-bt').textContent=bt;
+  document.getElementById('v-snr').textContent=snrDb;
+  document.getElementById('v-delay2').textContent=delay2;
+  document.getElementById('v-amp2').textContent=amp2.toFixed(1);
+
+  const wf = generateWaveform(wfType, pw, bt);
+  const wfLen = wf.length;
+
+  // Effective BT
+  let effBT;
+  switch(wfType){
+    case 'rect': effBT=1; break;
+    case 'lfm': effBT=bt; break;
+    case 'barker13': effBT=13; break;
+    case 'mseq': effBT=127; break;
+  }
+  const pgDb=10*Math.log10(effBT);
+
+  // Build received signal: two targets + noise
+  const sigLen=512;
+  const received=new Float64Array(sigLen);
+  const delay1=50;
+  for(let i=0;i<wfLen;i++){
+    if(delay1+i<sigLen) received[delay1+i]+=wf[i];
+    if(delay1+delay2+i<sigLen) received[delay1+delay2+i]+=amp2*wf[i];
+  }
+
+  // Add noise
+  const sigPower=received.reduce((s,v)=>s+v*v,0)/sigLen;
+  const noisePower=sigPower/Math.pow(10,snrDb/10);
+  const noisy=received.map(v=>v+Math.sqrt(noisePower)*randn());
+
+  // Matched filter (correlate with time-reversed waveform)
+  const template=new Float64Array(wfLen);
+  for(let i=0;i<wfLen;i++) template[i]=wf[wfLen-1-i];
+  const mfOut=correlate(Array.from(noisy),Array.from(template));
+
+  // Autocorrelation (clean)
+  const acf=correlate(Array.from(wf),Array.from(template));
+  const acfNorm=Math.max(...acf);
+  const acfDb=Array.from(acf).map(v=>20*Math.log10(Math.max(Math.abs(v)/acfNorm,1e-6)));
+
+  // Metrics
+  const mfPeak=Math.max(...mfOut);
+  const mfNoise=mfOut.slice(0,30);
+  const mfNoisePow=mfNoise.reduce((s,v)=>s+v*v,0)/mfNoise.length;
+  const outputSnr=10*Math.log10(mfPeak*mfPeak/mfNoisePow);
+
+  // 3dB width of autocorrelation mainlobe
+  const acfCenter=acf.indexOf(Math.max(...acf));
+  const halfMax=acfNorm*0.707;
+  let w3db=0;
+  for(let i=acfCenter;i<acf.length;i++){if(acf[i]<halfMax){w3db=2*(i-acfCenter);break;}}
+
+  // Peak sidelobe
+  const mainStart=Math.max(0,acfCenter-w3db);
+  const mainEnd=Math.min(acf.length,acfCenter+w3db);
+  let psl=-100;
+  for(let i=0;i<acf.length;i++){if(i<mainStart||i>mainEnd){const v=20*Math.log10(Math.abs(acf[i])/acfNorm+1e-10);if(v>psl)psl=v;}}
+
+  document.getElementById('m-pg').textContent=pgDb.toFixed(1)+' dB (BT='+effBT+')';
+  document.getElementById('m-cr').textContent=effBT+'x';
+  document.getElementById('m-osnr').textContent=outputSnr.toFixed(1)+' dB';
+  document.getElementById('m-3db').textContent=w3db+' samples';
+  document.getElementById('m-psl').textContent=psl.toFixed(1)+' dB';
+
+  const idx=n=>Array.from({length:n},(_,i)=>i);
+
+  // Plot 1: Waveform
+  Plotly.react('plot-waveform',[{x:idx(wfLen),y:Array.from(wf),mode:'lines',line:{color:'#60a5fa',width:2}}],
+    {...lo,title:{text:`Transmit Waveform: ${wfType.toUpperCase()} (${wfLen} samples)`,font:{size:13}},xaxis:{...lo.xaxis,title:'Sample'},yaxis:{...lo.yaxis,title:'Amplitude'}},{responsive:true});
+
+  // Plot 2: Spectrum
+  const nfft=512;
+  const padded=new Float64Array(nfft);
+  for(let i=0;i<Math.min(wfLen,nfft);i++) padded[i]=wf[i];
+  const mag=fftMag(Array.from(padded));
+  const magDb=Array.from(mag).map(v=>20*Math.log10(Math.max(v,1e-6)));
+  const fIdx=Array.from({length:mag.length},(_,i)=>i/nfft);
+
+  Plotly.react('plot-spectrum',[{x:fIdx,y:magDb,mode:'lines',line:{color:'#facc15',width:2}}],
+    {...lo,title:{text:'Waveform Spectrum',font:{size:13}},xaxis:{...lo.xaxis,title:'Normalized Frequency'},yaxis:{...lo.yaxis,title:'dB',range:[Math.max(...magDb)-60,Math.max(...magDb)+5]}},{responsive:true});
+
+  // Plot 3: Noisy received signal
+  Plotly.react('plot-noisy',[
+    {x:idx(sigLen),y:Array.from(received),mode:'lines',line:{color:'#4b5563',width:1},name:'Clean',opacity:0.4},
+    {x:idx(sigLen),y:Array.from(noisy),mode:'lines',line:{color:'#f472b6',width:1.5},name:`Noisy (SNR=${snrDb}dB)`},
+  ],{...lo,title:{text:`Received Signal (input SNR=${snrDb} dB)`,font:{size:13}},xaxis:{...lo.xaxis,title:'Sample'},yaxis:{...lo.yaxis,title:'Amplitude'},legend:{x:0.55,y:1}},{responsive:true});
+
+  // Plot 4: MF output
+  const mfIdx=idx(mfOut.length);
+  Plotly.react('plot-mf-output',[
+    {x:mfIdx,y:Array.from(mfOut),mode:'lines',line:{color:'#4ade80',width:2},name:'MF Output'},
+  ],{...lo,title:{text:`Matched Filter Output (gain=${pgDb.toFixed(1)} dB)`,font:{size:13}},xaxis:{...lo.xaxis,title:'Sample'},yaxis:{...lo.yaxis,title:'Amplitude'},
+    annotations:[
+      {x:delay1+wfLen-1,y:mfPeak,text:'Target 1',showarrow:true,arrowhead:2,arrowcolor:'#4ade80',font:{color:'#4ade80',size:10}},
+    ]
+  },{responsive:true});
+
+  // Plot 5: Autocorrelation (dB)
+  const acfIdx=Array.from({length:acf.length},(_,i)=>i-acfCenter);
+  Plotly.react('plot-autocorr',[
+    {x:acfIdx,y:acfDb,mode:'lines',line:{color:'#a78bfa',width:2.5},name:'ACF (dB)'},
+    {x:[acfIdx[0],acfIdx[acfIdx.length-1]],y:[psl,psl],mode:'lines',line:{color:'#ef4444',width:1,dash:'dash'},name:`PSL=${psl.toFixed(1)} dB`},
+  ],{...lo,title:{text:'Autocorrelation (Pulse Compression Profile)',font:{size:13}},xaxis:{...lo.xaxis,title:'Lag (samples)',range:[-wfLen*2,wfLen*2]},yaxis:{...lo.yaxis,title:'dB',range:[-50,5]},legend:{x:0.55,y:1}},{responsive:true});
+
+  // Plot 6: Comparison across waveforms
+  const types=['rect','lfm','barker13','mseq'];
+  const names=['Rectangular','LFM','Barker-13','m-sequence'];
+  const colors=['#9ca3af','#60a5fa','#facc15','#f472b6'];
+  const compTraces=types.map((tp,idx)=>{
+    const w=generateWaveform(tp,pw,bt);
+    const tmpl=new Float64Array(w.length);
+    for(let i=0;i<w.length;i++) tmpl[i]=w[w.length-1-i];
+    const ac=correlate(Array.from(w),Array.from(tmpl));
+    const pk=Math.max(...ac);
+    const center=ac.indexOf(pk);
+    const db=Array.from(ac).map(v=>20*Math.log10(Math.max(Math.abs(v)/pk,1e-6)));
+    const lags=Array.from({length:ac.length},(_,i)=>i-center);
+    return {x:lags,y:db,mode:'lines',line:{color:colors[idx],width:2},name:names[idx]};
+  });
+
+  Plotly.react('plot-comparison',compTraces,{...lo,title:{text:'Autocorrelation Comparison',font:{size:13}},xaxis:{...lo.xaxis,title:'Lag (samples)',range:[-wfLen*2,wfLen*2]},yaxis:{...lo.yaxis,title:'dB',range:[-50,5]},legend:{font:{size:9}}},{responsive:true});
+}
+
+['waveform'].forEach(id=>document.getElementById(id).addEventListener('change',update));
+['pw','bt','snr','delay2','amp2'].forEach(id=>document.getElementById(id).addEventListener('input',update));
+update();
+</script>
+</body>
+</html>

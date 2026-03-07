@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+<link rel="stylesheet" href="../theme.css">
+<title>Ambiguity Function</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="../theme.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Pretendard', 'Inter', system-ui, -apple-system, sans-serif; background: #111827; color: #d1d5db; }
+  .header { padding: 1.2rem 2rem; background: #1f2937; border-bottom: 1px solid #374151; }
+  .header h1 { font-size: 1.4rem; font-weight: 600; }
+  .header p { font-size: 0.85rem; color: #9ca3af; margin-top: 0.3rem; }
+  .container { display: grid; grid-template-columns: 280px 1fr; height: calc(100vh - 80px); }
+  .controls { padding: 1.2rem; background: #1f2937; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; }
+  .control-group { background: #111827; border-radius: 8px; padding: 1rem; }
+  .control-group h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 0.7rem; }
+  label { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin-bottom: 0.3rem; }
+  label span.val { color: #60a5fa; font-family: monospace; }
+  input[type=range] { width: 100%; accent-color: #60a5fa; margin-bottom: 0.5rem; }
+  select { width: 100%; padding: 0.4rem; background: #1f2937; color: #d1d5db; border: 1px solid #374151; border-radius: 6px; font-size: 0.85rem; margin-bottom: 0.5rem; }
+  .plots { padding: 1rem; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 0.5rem; }
+  .plot { background: #1f2937; border-radius: 8px; }
+  .info-box { background: #111827; border-radius: 8px; padding: 0.8rem 1rem; font-size: 0.8rem; line-height: 1.6; color: #9ca3af; }
+  .info-box code { color: #60a5fa; }
+</style>
+</head>
+<body>
+<div class="header">
+  <a class="back-link" href="../index.html" title="All demos">&larr;</a>
+  <div class="header-title">
+    <h1>Ambiguity Function</h1>
+    <p>Levanon & Mozeson — Waveform Analysis for Radar</p>
+  </div>
+  <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"></button>
+</div>
+<div class="container">
+  <div class="controls">
+    <div class="control-group">
+      <h3>Waveform</h3>
+      <select id="waveform">
+        <option value="rect">Rectangular Pulse</option>
+        <option value="lfm" selected>LFM Chirp</option>
+        <option value="barker13">Barker-13</option>
+        <option value="v-lfm">V-shaped LFM (up+down)</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <h3>Parameters</h3>
+      <label>Pulse Width T (&mu;s) <span class="val" id="v-T">10</span></label>
+      <input type="range" id="T" min="1" max="50" step="1" value="10">
+      <label>Bandwidth B (MHz) <span class="val" id="v-B">5</span></label>
+      <input type="range" id="B" min="0.5" max="50" step="0.5" value="5">
+    </div>
+    <div class="control-group">
+      <h3>Cut Axis</h3>
+      <label>Delay &tau; cut (at f<sub>d</sub>) <span class="val" id="v-fd-cut">0</span> Hz</label>
+      <input type="range" id="fd-cut" min="-500000" max="500000" step="10000" value="0">
+      <label>Doppler f<sub>d</sub> cut (at &tau;) <span class="val" id="v-tau-cut">0</span> &mu;s</label>
+      <input type="range" id="tau-cut" min="-20" max="20" step="0.5" value="0">
+    </div>
+    <div class="info-box">
+      <strong>Ambiguity Function</strong><br>
+      <code>|&chi;(&tau;, f<sub>d</sub>)|&sup2; = |&int; s(t)s*(t-&tau;)e<sup>j2&pi;f<sub>d</sub>t</sup>dt|&sup2;</code><br><br>
+      <strong>Thumbtack:</strong> Ideal — narrow in both &tau; and f<sub>d</sub><br>
+      <strong>Rect pulse:</strong> Good delay res, poor Doppler res (sinc in f<sub>d</sub>)<br>
+      <strong>LFM:</strong> Coupled &tau;-f<sub>d</sub> (ridge tilted by B/T slope)<br><br>
+      <strong>Volume invariance:</strong> Total volume is constant &mdash; narrowing one axis spreads the other.
+    </div>
+  </div>
+  <div class="plots">
+    <div class="plot" id="plot-contour"></div>
+    <div class="plot" id="plot-3d"></div>
+    <div class="plot" id="plot-delay-cut"></div>
+    <div class="plot" id="plot-doppler-cut"></div>
+  </div>
+</div>
+<script>
+var _t=THEMES[curTheme];var plotBg=_t.plotBg,paperBg=_t.paperBg,gridColor=_t.gridColor,textColor=_t.textColor;
+var lo={paper_bgcolor:paperBg,plot_bgcolor:plotBg,font:{color:textColor,size:11},margin:{t:40,r:16,b:40,l:55},xaxis:{gridcolor:gridColor,zerolinecolor:_t.zeroLine},yaxis:{gridcolor:gridColor,zerolinecolor:_t.zeroLine}};
+
+function computeAF(wfType, T_us, B_MHz, nTau, nFd) {
+  const T = T_us * 1e-6;
+  const B = B_MHz * 1e6;
+  const BT = B * T;
+  const fs = 4 * B; // oversample
+  const N = Math.max(64, Math.round(T * fs));
+  const dt = T / N;
+
+  // Generate waveform samples
+  const s = new Float64Array(N);
+  const sIm = new Float64Array(N);
+  for (let i = 0; i < N; i++) {
+    const t = (i / N - 0.5) * T;
+    switch (wfType) {
+      case 'rect':
+        s[i] = 1 / Math.sqrt(N);
+        break;
+      case 'lfm': {
+        const phase = Math.PI * B / T * t * t;
+        s[i] = Math.cos(phase) / Math.sqrt(N);
+        sIm[i] = Math.sin(phase) / Math.sqrt(N);
+        break;
+      }
+      case 'barker13': {
+        const code = [1,1,1,1,1,-1,-1,1,1,-1,1,-1,1];
+        const chipIdx = Math.floor(i / N * 13);
+        s[i] = code[Math.min(chipIdx, 12)] / Math.sqrt(N);
+        break;
+      }
+      case 'v-lfm': {
+        const half = N / 2;
+        if (i < half) {
+          const t2 = (i / half - 0.5) * T / 2;
+          const phase = Math.PI * B / (T / 2) * t2 * t2;
+          s[i] = Math.cos(phase) / Math.sqrt(N);
+          sIm[i] = Math.sin(phase) / Math.sqrt(N);
+        } else {
+          const t2 = ((i - half) / half - 0.5) * T / 2;
+          const phase = -Math.PI * B / (T / 2) * t2 * t2;
+          s[i] = Math.cos(phase) / Math.sqrt(N);
+          sIm[i] = Math.sin(phase) / Math.sqrt(N);
+        }
+        break;
+      }
+    }
+  }
+
+  // Compute AF on grid
+  const tauMax = 1.5 * T;
+  const fdMax = Math.max(3 / T, 1.5 * B);
+  const tauAxis = Array.from({ length: nTau }, (_, i) => -tauMax + 2 * tauMax * i / (nTau - 1));
+  const fdAxis = Array.from({ length: nFd }, (_, i) => -fdMax + 2 * fdMax * i / (nFd - 1));
+
+  const AF = [];
+  for (let fi = 0; fi < nFd; fi++) {
+    const row = new Float64Array(nTau);
+    const fd = fdAxis[fi];
+    for (let ti = 0; ti < nTau; ti++) {
+      const tau = tauAxis[ti];
+      const shift = Math.round(tau / dt);
+      let re = 0, im = 0;
+      for (let n = 0; n < N; n++) {
+        const m = n - shift;
+        if (m < 0 || m >= N) continue;
+        const phase = 2 * Math.PI * fd * n * dt;
+        const cp = Math.cos(phase), sp = Math.sin(phase);
+        // s(t) * conj(s(t-tau)) * exp(j*2*pi*fd*t)
+        const a_re = s[n] * s[m] + sIm[n] * sIm[m];
+        const a_im = sIm[n] * s[m] - s[n] * sIm[m];
+        re += a_re * cp - a_im * sp;
+        im += a_re * sp + a_im * cp;
+      }
+      row[ti] = re * re + im * im;
+    }
+    AF.push(Array.from(row));
+  }
+
+  return { AF, tauAxis: tauAxis.map(v => v * 1e6), fdAxis: fdAxis.map(v => v / 1e3), tauMax: tauMax * 1e6, fdMax: fdMax / 1e3 };
+}
+
+function update() {
+  const wfType = document.getElementById('waveform').value;
+  const T_us = +document.getElementById('T').value;
+  const B_MHz = +document.getElementById('B').value;
+  const fdCut = +document.getElementById('fd-cut').value;
+  const tauCut = +document.getElementById('tau-cut').value;
+
+  document.getElementById('v-T').textContent = T_us;
+  document.getElementById('v-B').textContent = B_MHz;
+  document.getElementById('v-fd-cut').textContent = fdCut;
+  document.getElementById('v-tau-cut').textContent = tauCut;
+
+  const nGrid = 80;
+  const { AF, tauAxis, fdAxis, tauMax, fdMax } = computeAF(wfType, T_us, B_MHz, nGrid, nGrid);
+
+  // Normalize
+  let peak = 0;
+  AF.forEach(r => r.forEach(v => { if (v > peak) peak = v; }));
+  const AFdB = AF.map(r => r.map(v => 10 * Math.log10(Math.max(v / peak, 1e-6))));
+
+  // Plot 1: Contour
+  Plotly.react('plot-contour', [{
+    z: AFdB, x: tauAxis, y: fdAxis, type: 'contour',
+    colorscale: [[0,'#111827'],[0.2,'#1e3a5f'],[0.4,'#2563eb'],[0.6,'#60a5fa'],[0.8,'#facc15'],[1,'#ef4444']],
+    contours: { start: -30, end: 0, size: 3 },
+    colorbar: { title: 'dB', titlefont: { color: textColor }, tickfont: { color: textColor } }
+  }], { ...lo, title: { text: `|χ(τ,f_d)|² Contour — ${wfType.toUpperCase()} (BT=${(B_MHz*T_us).toFixed(0)})`, font: { size: 13 } }, xaxis: { ...lo.xaxis, title: 'Delay τ (μs)' }, yaxis: { ...lo.yaxis, title: 'Doppler (kHz)' } }, { responsive: true });
+
+  // Plot 2: 3D surface
+  Plotly.react('plot-3d', [{
+    z: AFdB, x: tauAxis, y: fdAxis, type: 'surface',
+    colorscale: [[0,'#111827'],[0.3,'#2563eb'],[0.6,'#60a5fa'],[0.8,'#facc15'],[1,'#ef4444']],
+    cmin: -30, cmax: 0
+  }], {
+    paper_bgcolor: paperBg, font: { color: textColor, size: 11 }, margin: { t: 40, r: 10, b: 10, l: 10 },
+    title: { text: '3D Ambiguity Surface', font: { size: 13 } },
+    scene: {
+      xaxis: { title: 'τ (μs)', backgroundcolor: plotBg, gridcolor: gridColor, color: textColor },
+      yaxis: { title: 'f_d (kHz)', backgroundcolor: plotBg, gridcolor: gridColor, color: textColor },
+      zaxis: { title: 'dB', backgroundcolor: plotBg, gridcolor: gridColor, color: textColor, range: [-30, 0] },
+      bgcolor: plotBg
+    }
+  }, { responsive: true });
+
+  // Plot 3: Delay cut (at fixed fd)
+  const fdCut_kHz = fdCut / 1e3;
+  const fdIdx = fdAxis.reduce((best, v, i) => Math.abs(v - fdCut_kHz) < Math.abs(fdAxis[best] - fdCut_kHz) ? i : best, 0);
+  const delayCut = AFdB[fdIdx];
+
+  Plotly.react('plot-delay-cut', [{
+    x: tauAxis, y: delayCut, mode: 'lines', line: { color: '#60a5fa', width: 2.5 }
+  }], { ...lo, title: { text: `Delay Cut at f_d = ${fdAxis[fdIdx].toFixed(1)} kHz`, font: { size: 13 } }, xaxis: { ...lo.xaxis, title: 'Delay τ (μs)' }, yaxis: { ...lo.yaxis, title: 'dB', range: [-40, 3] } }, { responsive: true });
+
+  // Plot 4: Doppler cut (at fixed tau)
+  const tauIdx = tauAxis.reduce((best, v, i) => Math.abs(v - tauCut) < Math.abs(tauAxis[best] - tauCut) ? i : best, 0);
+  const dopplerCut = AFdB.map(r => r[tauIdx]);
+
+  Plotly.react('plot-doppler-cut', [{
+    x: fdAxis, y: dopplerCut, mode: 'lines', line: { color: '#f472b6', width: 2.5 }
+  }], { ...lo, title: { text: `Doppler Cut at τ = ${tauAxis[tauIdx].toFixed(1)} μs`, font: { size: 13 } }, xaxis: { ...lo.xaxis, title: 'Doppler (kHz)' }, yaxis: { ...lo.yaxis, title: 'dB', range: [-40, 3] } }, { responsive: true });
+}
+
+['waveform'].forEach(id => document.getElementById(id).addEventListener('change', update));
+['T', 'B', 'fd-cut', 'tau-cut'].forEach(id => document.getElementById(id).addEventListener('input', update));
+update();
+</script>
+</body>
+</html>

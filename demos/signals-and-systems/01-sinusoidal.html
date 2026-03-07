@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+<link rel="stylesheet" href="../theme.css">
+<title>Sinusoidal Signals</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="../theme.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Pretendard', 'Inter', system-ui, -apple-system, sans-serif; background: #111827; color: #d1d5db; }
+  .header { padding: 1.2rem 2rem; background: #1f2937; border-bottom: 1px solid #374151; }
+  .header h1 { font-size: 1.4rem; font-weight: 600; }
+  .header p { font-size: 0.85rem; color: #9ca3af; margin-top: 0.3rem; }
+  .container { display: grid; grid-template-columns: 300px 1fr; height: calc(100vh - 80px); }
+  .controls { padding: 1.2rem; background: #1f2937; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; }
+  .control-group { background: #111827; border-radius: 8px; padding: 1rem; }
+  .control-group h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 0.7rem; }
+  label { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin-bottom: 0.3rem; }
+  label span.val { color: #60a5fa; font-family: monospace; }
+  input[type=range] { width: 100%; accent-color: #60a5fa; margin-bottom: 0.5rem; }
+  .toggle-group { display: flex; gap: 0.5rem; }
+  .toggle-group button { flex: 1; padding: 0.4rem; border: 1px solid #374151; background: #111827; color: #9ca3af; border-radius: 6px; cursor: pointer; font-size: 0.8rem; transition: all 0.15s; }
+  .toggle-group button.active { background: #60a5fa; color: #111827; border-color: #60a5fa; font-weight: 600; }
+  .plots { padding: 1rem; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 0.5rem; }
+  .plot { background: #1f2937; border-radius: 8px; }
+  .info-box { background: #111827; border-radius: 8px; padding: 0.8rem 1rem; font-size: 0.8rem; line-height: 1.6; color: #9ca3af; }
+  .info-box code { color: #60a5fa; }
+</style>
+</head>
+<body>
+<div class="header">
+  <a class="back-link" href="../index.html" title="All demos">&larr;</a>
+  <div class="header-title">
+    <h1>Sinusoidal Signals</h1>
+    <p>Oppenheim & Willsky, Ch. 1 — Continuous & Discrete-Time Signals</p>
+  </div>
+  <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"></button>
+</div>
+<div class="container">
+  <div class="controls">
+    <div class="control-group">
+      <h3>Signal Type</h3>
+      <div class="toggle-group">
+        <button class="active" onclick="setMode('ct')">Continuous-Time</button>
+        <button onclick="setMode('dt')">Discrete-Time</button>
+      </div>
+    </div>
+    <div class="control-group">
+      <h3>Parameters</h3>
+      <label>Frequency (Hz) <span class="val" id="v-freq">5</span></label>
+      <input type="range" id="freq" min="0.5" max="30" step="0.5" value="5">
+      <label>Amplitude <span class="val" id="v-amp">1.0</span></label>
+      <input type="range" id="amp" min="0.1" max="2" step="0.1" value="1">
+      <label>Phase (deg) <span class="val" id="v-phase">0</span></label>
+      <input type="range" id="phase" min="-180" max="180" step="5" value="0">
+    </div>
+    <div class="control-group" id="dt-controls" style="display:none;">
+      <h3>Discrete-Time</h3>
+      <label>Sampling freq fs (Hz) <span class="val" id="v-fs">50</span></label>
+      <input type="range" id="fs" min="10" max="200" step="5" value="50">
+    </div>
+    <div class="info-box">
+      <strong>Key Concept</strong><br>
+      CT: <code>x(t) = A cos(2&pi;ft + &phi;)</code><br>
+      DT: <code>x[n] = A cos(2&pi;f/fs &middot; n + &phi;)</code><br><br>
+      The phasor <code>Ae^{j&phi;}</code> rotates in the complex plane at angular frequency <code>&omega; = 2&pi;f</code>.
+    </div>
+  </div>
+  <div class="plots">
+    <div class="plot" id="plot-time"></div>
+    <div class="plot" id="plot-phasor"></div>
+    <div class="plot" id="plot-real-imag"></div>
+    <div class="plot" id="plot-3d"></div>
+  </div>
+</div>
+<script>
+var _t=THEMES[curTheme];var plotBg=_t.plotBg,paperBg=_t.paperBg,gridColor=_t.gridColor,textColor=_t.textColor;
+var lo = { paper_bgcolor: paperBg, plot_bgcolor: plotBg, font: { color: textColor, size: 11 }, margin: { t: 36, r: 20, b: 40, l: 50 }, xaxis: { gridcolor: gridColor, zerolinecolor:_t.zeroLine }, yaxis: { gridcolor: gridColor, zerolinecolor:_t.zeroLine } };
+
+let mode = 'ct';
+const els = { freq: document.getElementById('freq'), amp: document.getElementById('amp'), phase: document.getElementById('phase'), fs: document.getElementById('fs') };
+
+function setMode(m) {
+  mode = m;
+  document.querySelectorAll('.toggle-group button').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('dt-controls').style.display = m === 'dt' ? 'block' : 'none';
+  update();
+}
+
+function update() {
+  const f = +els.freq.value, A = +els.amp.value, phi = +els.phase.value * Math.PI / 180, fs = +els.fs.value;
+  document.getElementById('v-freq').textContent = f;
+  document.getElementById('v-amp').textContent = A.toFixed(1);
+  document.getElementById('v-phase').textContent = els.phase.value;
+  document.getElementById('v-fs').textContent = fs;
+
+  const duration = 2 / Math.max(f, 0.5);
+  let t, xr, xi, plotMode, markerSize;
+
+  if (mode === 'ct') {
+    const N = 1000;
+    t = Array.from({ length: N }, (_, i) => i * duration / N);
+    xr = t.map(v => A * Math.cos(2 * Math.PI * f * v + phi));
+    xi = t.map(v => A * Math.sin(2 * Math.PI * f * v + phi));
+    plotMode = 'lines';
+    markerSize = 0;
+  } else {
+    const nSamples = Math.ceil(duration * fs);
+    t = Array.from({ length: nSamples }, (_, i) => i / fs);
+    xr = t.map(v => A * Math.cos(2 * Math.PI * f * v + phi));
+    xi = t.map(v => A * Math.sin(2 * Math.PI * f * v + phi));
+    plotMode = 'markers';
+    markerSize = 6;
+  }
+
+  // Time-domain waveform
+  Plotly.react('plot-time', [{
+    x: t, y: xr, mode: plotMode, line: { color: '#60a5fa', width: 2 }, marker: { size: markerSize, color: '#60a5fa' }, name: 'x(t)'
+  }], { ...lo, title: { text: mode === 'ct' ? 'x(t) = A cos(2&pi;ft + &phi;)' : 'x[n] = A cos(2&pi;f/fs &middot; n + &phi;)', font: { size: 13 } }, xaxis: { ...lo.xaxis, title: mode === 'ct' ? 'Time (s)' : 'Sample n' }, yaxis: { ...lo.yaxis, range: [-2.2, 2.2], title: 'Amplitude' } }, { responsive: true });
+
+  // Phasor diagram
+  const phasorR = A * Math.cos(phi), phasorI = A * Math.sin(phi);
+  Plotly.react('plot-phasor', [
+    { x: [0, phasorR], y: [0, phasorI], mode: 'lines+markers', line: { color: '#f472b6', width: 3 }, marker: { size: [0, 10], color: '#f472b6' }, name: 'Phasor' },
+    { x: Array.from({ length: 100 }, (_, i) => 2.2 * Math.cos(2 * Math.PI * i / 99)), y: Array.from({ length: 100 }, (_, i) => 2.2 * Math.sin(2 * Math.PI * i / 99)), mode: 'lines', line: { color: '#374151', width: 1, dash: 'dot' }, showlegend: false },
+  ], { ...lo, title: { text: 'Phasor Ae^{j&phi;}', font: { size: 13 } }, xaxis: { ...lo.xaxis, title: 'Real', range: [-2.5, 2.5], scaleanchor: 'y' }, yaxis: { ...lo.yaxis, title: 'Imag', range: [-2.5, 2.5] }, showlegend: false }, { responsive: true });
+
+  // Real and Imaginary parts
+  Plotly.react('plot-real-imag', [
+    { x: t, y: xr, mode: plotMode, line: { color: '#60a5fa', width: 2 }, marker: { size: markerSize, color: '#60a5fa' }, name: 'Real (cos)' },
+    { x: t, y: xi, mode: plotMode, line: { color: '#f472b6', width: 2 }, marker: { size: markerSize, color: '#f472b6' }, name: 'Imag (sin)' },
+  ], { ...lo, title: { text: 'Complex Exponential: Real & Imaginary', font: { size: 13 } }, xaxis: { ...lo.xaxis, title: mode === 'ct' ? 'Time (s)' : 'Sample n' }, yaxis: { ...lo.yaxis, range: [-2.2, 2.2] } }, { responsive: true });
+
+  // 3D helix (complex exponential)
+  Plotly.react('plot-3d', [{
+    x: t, y: xr, z: xi, mode: mode === 'ct' ? 'lines' : 'markers', type: 'scatter3d',
+    line: { color: '#a78bfa', width: 3 }, marker: { size: 3, color: '#a78bfa' },
+  }], {
+    paper_bgcolor: paperBg, plot_bgcolor: plotBg, font: { color: textColor, size: 11 }, margin: { t: 36, r: 10, b: 10, l: 10 },
+    title: { text: 'Complex Exponential Helix', font: { size: 13 } },
+    scene: { xaxis: { title: 'Time', backgroundcolor: plotBg, gridcolor: gridColor, color: textColor }, yaxis: { title: 'Real', backgroundcolor: plotBg, gridcolor: gridColor, color: textColor }, zaxis: { title: 'Imag', backgroundcolor: plotBg, gridcolor: gridColor, color: textColor }, bgcolor: plotBg }
+  }, { responsive: true });
+}
+
+Object.values(els).forEach(el => el.addEventListener('input', update));
+update();
+</script>
+</body>
+</html>

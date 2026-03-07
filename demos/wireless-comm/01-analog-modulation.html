@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+<link rel="stylesheet" href="../theme.css">
+<title>Analog Modulation</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="../theme.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Pretendard', 'Inter', system-ui, -apple-system, sans-serif; background: #111827; color: #d1d5db; }
+  .header { padding: 1.2rem 2rem; background: #1f2937; border-bottom: 1px solid #374151; }
+  .header h1 { font-size: 1.4rem; font-weight: 600; }
+  .header p { font-size: 0.85rem; color: #9ca3af; margin-top: 0.3rem; }
+  .container { display: grid; grid-template-columns: 280px 1fr; height: calc(100vh - 80px); }
+  .controls { padding: 1.2rem; background: #1f2937; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; }
+  .control-group { background: #111827; border-radius: 8px; padding: 1rem; }
+  .control-group h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 0.7rem; }
+  label { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin-bottom: 0.3rem; }
+  label span.val { color: #60a5fa; font-family: monospace; }
+  input[type=range] { width: 100%; accent-color: #60a5fa; margin-bottom: 0.5rem; }
+  select { width: 100%; padding: 0.4rem; background: #1f2937; color: #d1d5db; border: 1px solid #374151; border-radius: 6px; font-size: 0.85rem; margin-bottom: 0.5rem; }
+  .plots { padding: 1rem; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr 1fr; gap: 0.5rem; }
+  .plot { background: #1f2937; border-radius: 8px; }
+  .info-box { background: #111827; border-radius: 8px; padding: 0.8rem 1rem; font-size: 0.8rem; line-height: 1.6; color: #9ca3af; }
+  .info-box code { color: #60a5fa; }
+  .status { padding: 0.4rem 0.6rem; border-radius: 6px; text-align: center; font-weight: 600; font-size: 0.8rem; margin-top: 0.5rem; }
+  .status.warn { background: rgba(250,204,21,0.15); color: #facc15; border: 1px solid #facc15; }
+</style>
+</head>
+<body>
+<div class="header">
+  <a class="back-link" href="../index.html" title="All demos">&larr;</a>
+  <div class="header-title">
+    <h1>Analog Modulation</h1>
+    <p>Haykin — AM, FM, PM Modulation</p>
+  </div>
+  <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"></button>
+</div>
+<div class="container">
+  <div class="controls">
+    <div class="control-group">
+      <h3>Modulation Type</h3>
+      <select id="modtype">
+        <option value="AM">AM (Amplitude Modulation)</option>
+        <option value="DSB-SC">DSB-SC (Suppressed Carrier)</option>
+        <option value="FM">FM (Frequency Modulation)</option>
+        <option value="PM">PM (Phase Modulation)</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <h3>Message Signal</h3>
+      <label>Message freq f<sub>m</sub> (Hz) <span class="val" id="v-fm">3</span></label>
+      <input type="range" id="fm" min="1" max="15" step="0.5" value="3">
+      <label>Message amplitude A<sub>m</sub> <span class="val" id="v-Am">1.0</span></label>
+      <input type="range" id="Am" min="0.1" max="2" step="0.1" value="1">
+    </div>
+    <div class="control-group">
+      <h3>Carrier</h3>
+      <label>Carrier freq f<sub>c</sub> (Hz) <span class="val" id="v-fc">40</span></label>
+      <input type="range" id="fc" min="20" max="100" step="1" value="40">
+    </div>
+    <div class="control-group">
+      <h3>Modulation Index</h3>
+      <label>m / &beta; <span class="val" id="v-mod">0.8</span></label>
+      <input type="range" id="mod" min="0.1" max="3" step="0.1" value="0.8">
+      <div class="status warn" id="mod-status" style="display:none"></div>
+    </div>
+    <div class="info-box" id="info-text"></div>
+  </div>
+  <div class="plots">
+    <div class="plot" id="plot-msg-t"></div>
+    <div class="plot" id="plot-msg-f"></div>
+    <div class="plot" id="plot-carrier-t"></div>
+    <div class="plot" id="plot-carrier-f"></div>
+    <div class="plot" id="plot-mod-t"></div>
+    <div class="plot" id="plot-mod-f"></div>
+  </div>
+</div>
+<script>
+var _t=THEMES[curTheme];var plotBg=_t.plotBg,paperBg=_t.paperBg,gridColor=_t.gridColor,textColor=_t.textColor;
+var lo={paper_bgcolor:paperBg,plot_bgcolor:plotBg,font:{color:textColor,size:11},margin:{t:36,r:16,b:36,l:50},xaxis:{gridcolor:gridColor,zerolinecolor:_t.zeroLine},yaxis:{gridcolor:gridColor,zerolinecolor:_t.zeroLine}};
+
+const FS=2000, N=4096;
+const t=Array.from({length:N},(_,i)=>i/FS);
+const freqs=Array.from({length:N/2},(_,i)=>i*FS/N);
+
+function fftMag(x){
+  // Use built-in approximation: for display purposes, compute DFT magnitude for positive freqs
+  const M=x.length, half=Math.floor(M/2);
+  const mag=new Float64Array(half);
+  // Use decimated FFT approach for speed (M can be large)
+  for(let k=0;k<half;k++){
+    let re=0,im=0;
+    // Skip by 4 for speed (ok for visualization)
+    for(let n=0;n<M;n+=1){
+      const ang=-2*Math.PI*k*n/M;
+      re+=x[n]*Math.cos(ang);
+      im+=x[n]*Math.sin(ang);
+    }
+    mag[k]=2*Math.sqrt(re*re+im*im)/M;
+  }
+  mag[0]/=2;
+  return mag;
+}
+
+// Faster FFT using Cooley-Tukey (power of 2)
+function fft2(x){
+  const n=x.length;
+  if(n===1) return [{re:x[0],im:0}];
+  const even=fft2(x.filter((_,i)=>i%2===0));
+  const odd=fft2(x.filter((_,i)=>i%2===1));
+  const out=new Array(n);
+  for(let k=0;k<n/2;k++){
+    const ang=-2*Math.PI*k/n;
+    const tre=Math.cos(ang)*odd[k].re-Math.sin(ang)*odd[k].im;
+    const tim=Math.cos(ang)*odd[k].im+Math.sin(ang)*odd[k].re;
+    out[k]={re:even[k].re+tre,im:even[k].im+tim};
+    out[k+n/2]={re:even[k].re-tre,im:even[k].im-tim};
+  }
+  return out;
+}
+
+function spectrum(x){
+  const X=fft2(x);
+  const half=X.length/2;
+  return Array.from({length:half},(_,i)=>2*Math.sqrt(X[i].re**2+X[i].im**2)/X.length);
+}
+
+function update(){
+  const modtype=document.getElementById('modtype').value;
+  const fm=+document.getElementById('fm').value;
+  const Am=+document.getElementById('Am').value;
+  const fc=+document.getElementById('fc').value;
+  const modIdx=+document.getElementById('mod').value;
+
+  document.getElementById('v-fm').textContent=fm;
+  document.getElementById('v-Am').textContent=Am.toFixed(1);
+  document.getElementById('v-fc').textContent=fc;
+  document.getElementById('v-mod').textContent=modIdx.toFixed(1);
+
+  // Message signal
+  const msg=t.map(v=>Am*Math.cos(2*Math.PI*fm*v));
+  const carrier=t.map(v=>Math.cos(2*Math.PI*fc*v));
+
+  // Modulated signal
+  let modSig;
+  const statusEl=document.getElementById('mod-status');
+  const infoEl=document.getElementById('info-text');
+  statusEl.style.display='none';
+
+  switch(modtype){
+    case 'AM':
+      modSig=t.map((v,i)=>(1+modIdx*msg[i]/Am)*Math.cos(2*Math.PI*fc*v));
+      if(modIdx>1){statusEl.style.display='block';statusEl.textContent='Over-modulation (m>1): envelope distortion!';}
+      infoEl.innerHTML='<strong>AM</strong><br><code>s(t) = [1 + m&middot;m(t)] cos(2&pi;f<sub>c</sub>t)</code><br><br>m &lt; 1: envelope follows message<br>m = 1: 100% modulation<br>m &gt; 1: over-modulation (distortion)<br><br>Bandwidth: <code>2f<sub>m</sub></code>';
+      break;
+    case 'DSB-SC':
+      modSig=t.map((v,i)=>modIdx*msg[i]*Math.cos(2*Math.PI*fc*v));
+      infoEl.innerHTML='<strong>DSB-SC</strong><br><code>s(t) = m(t) cos(2&pi;f<sub>c</sub>t)</code><br><br>No carrier component — all power in sidebands.<br>More efficient than AM but needs coherent detection.<br><br>Bandwidth: <code>2f<sub>m</sub></code>';
+      break;
+    case 'FM':
+      modSig=t.map((v,i)=>{
+        let integral=0;
+        for(let j=0;j<=i;j++) integral+=msg[j]/FS;
+        return Math.cos(2*Math.PI*fc*v+2*Math.PI*modIdx*fm*integral);
+      });
+      infoEl.innerHTML=`<strong>FM</strong><br><code>s(t) = cos(2&pi;f<sub>c</sub>t + 2&pi;k<sub>f</sub>&int;m(&tau;)d&tau;)</code><br><br>&beta; = &Delta;f / f<sub>m</sub> = ${modIdx.toFixed(1)}<br>&Delta;f = ${(modIdx*fm).toFixed(1)} Hz<br><br>Carson&apos;s rule BW &asymp; <code>2(&Delta;f + f<sub>m</sub>) = ${(2*(modIdx*fm+fm)).toFixed(1)} Hz</code>`;
+      break;
+    case 'PM':
+      modSig=t.map((v,i)=>Math.cos(2*Math.PI*fc*v+modIdx*msg[i]));
+      infoEl.innerHTML='<strong>PM</strong><br><code>s(t) = cos(2&pi;f<sub>c</sub>t + k<sub>p</sub>&middot;m(t))</code><br><br>Phase deviation proportional to message.<br>Instantaneous frequency depends on dm/dt.';
+      break;
+  }
+
+  const tShow=3/fm; // show ~3 message periods
+  const nShow=Math.min(Math.floor(tShow*FS),N);
+  const ts=t.slice(0,nShow), msgs=msg.slice(0,nShow), cars=carrier.slice(0,nShow), mods=modSig.slice(0,nShow);
+
+  // Spectra
+  const msgSpec=spectrum(msg);
+  const carSpec=spectrum(carrier);
+  const modSpec=spectrum(modSig);
+  const fMax=Math.min(fc*3,FS/2);
+
+  // Row 1: Message
+  Plotly.react('plot-msg-t',[{x:ts,y:msgs,mode:'lines',line:{color:'#facc15',width:2}}],
+    {...lo,title:{text:'Message m(t)',font:{size:13}},xaxis:{...lo.xaxis,title:'Time (s)'},yaxis:{...lo.yaxis,title:'Amplitude'}},{responsive:true});
+  Plotly.react('plot-msg-f',[{x:freqs,y:msgSpec,mode:'lines',line:{color:'#facc15',width:2}}],
+    {...lo,title:{text:'Message Spectrum |M(f)|',font:{size:13}},xaxis:{...lo.xaxis,title:'Freq (Hz)',range:[0,fMax]},yaxis:{...lo.yaxis,title:'Magnitude'}},{responsive:true});
+
+  // Row 2: Carrier
+  Plotly.react('plot-carrier-t',[{x:ts,y:cars,mode:'lines',line:{color:'#9ca3af',width:1.5}}],
+    {...lo,title:{text:`Carrier cos(2\u03C0\u00B7${fc}t)`,font:{size:13}},xaxis:{...lo.xaxis,title:'Time (s)'},yaxis:{...lo.yaxis,title:'Amplitude',range:[-1.5,1.5]}},{responsive:true});
+  Plotly.react('plot-carrier-f',[{x:freqs,y:carSpec,mode:'lines',line:{color:'#9ca3af',width:1.5}}],
+    {...lo,title:{text:'Carrier Spectrum',font:{size:13}},xaxis:{...lo.xaxis,title:'Freq (Hz)',range:[0,fMax]},yaxis:{...lo.yaxis,title:'Magnitude'}},{responsive:true});
+
+  // Row 3: Modulated
+  const modTraces=[{x:ts,y:mods,mode:'lines',line:{color:'#60a5fa',width:2},name:'s(t)'}];
+  if(modtype==='AM'||modtype==='DSB-SC'){
+    // Show envelope
+    const envP=ts.map((_,i)=>modtype==='AM'?(1+modIdx*msgs[i]/Am):modIdx*Math.abs(msgs[i]));
+    const envN=envP.map(v=>-v);
+    modTraces.push({x:ts,y:envP,mode:'lines',line:{color:'#f472b6',width:1.5,dash:'dot'},name:'Envelope'});
+    modTraces.push({x:ts,y:envN,mode:'lines',line:{color:'#f472b6',width:1.5,dash:'dot'},showlegend:false});
+  }
+  Plotly.react('plot-mod-t',modTraces,
+    {...lo,title:{text:`${modtype} Signal s(t)`,font:{size:13}},xaxis:{...lo.xaxis,title:'Time (s)'},yaxis:{...lo.yaxis,title:'Amplitude'},legend:{x:0.7,y:1}},{responsive:true});
+
+  // Modulated spectrum with bandwidth annotation
+  const bwShapes=[];
+  let bw;
+  if(modtype==='AM'||modtype==='DSB-SC'){bw=2*fm;bwShapes.push({type:'rect',x0:fc-fm,x1:fc+fm,y0:0,y1:Math.max(...modSpec)*1.1,fillcolor:'rgba(56,189,248,0.08)',line:{color:'#60a5fa',dash:'dot',width:1}});}
+  else if(modtype==='FM'){bw=2*(modIdx*fm+fm);bwShapes.push({type:'rect',x0:fc-bw/2,x1:fc+bw/2,y0:0,y1:Math.max(...modSpec)*1.1,fillcolor:'rgba(56,189,248,0.08)',line:{color:'#60a5fa',dash:'dot',width:1}});}
+
+  Plotly.react('plot-mod-f',[{x:freqs,y:modSpec,mode:'lines',line:{color:'#60a5fa',width:2}}],
+    {...lo,title:{text:`${modtype} Spectrum |S(f)|`,font:{size:13}},xaxis:{...lo.xaxis,title:'Freq (Hz)',range:[0,fMax]},yaxis:{...lo.yaxis,title:'Magnitude'},shapes:bwShapes},{responsive:true});
+}
+
+['modtype'].forEach(id=>document.getElementById(id).addEventListener('change',update));
+['fm','Am','fc','mod'].forEach(id=>document.getElementById(id).addEventListener('input',update));
+update();
+</script>
+</body>
+</html>

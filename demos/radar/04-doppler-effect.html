@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+<link rel="stylesheet" href="../theme.css">
+<title>Doppler Effect</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="../theme.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Pretendard', 'Inter', system-ui, -apple-system, sans-serif; background: #111827; color: #d1d5db; }
+  .header { padding: 1.2rem 2rem; background: #1f2937; border-bottom: 1px solid #374151; }
+  .header h1 { font-size: 1.4rem; font-weight: 600; }
+  .header p { font-size: 0.85rem; color: #9ca3af; margin-top: 0.3rem; }
+  .container { display: grid; grid-template-columns: 280px 1fr; height: calc(100vh - 80px); }
+  .controls { padding: 1.2rem; background: #1f2937; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; }
+  .control-group { background: #111827; border-radius: 8px; padding: 1rem; }
+  .control-group h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 0.7rem; }
+  label { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin-bottom: 0.3rem; }
+  label span.val { color: #60a5fa; font-family: monospace; }
+  input[type=range] { width: 100%; accent-color: #60a5fa; margin-bottom: 0.5rem; }
+  select { width: 100%; padding: 0.4rem; background: #1f2937; color: #d1d5db; border: 1px solid #374151; border-radius: 6px; font-size: 0.85rem; margin-bottom: 0.5rem; }
+  .plots { padding: 1rem; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 0.5rem; }
+  .plot { background: #1f2937; border-radius: 8px; }
+  .info-box { background: #111827; border-radius: 8px; padding: 0.8rem 1rem; font-size: 0.8rem; line-height: 1.6; color: #9ca3af; }
+  .info-box code { color: #60a5fa; }
+  .metric { display: flex; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid #1f2937; font-size: 0.82rem; }
+  .metric:last-child { border-bottom: none; }
+  .metric .label { color: #9ca3af; }
+  .metric .value { color: #60a5fa; font-family: monospace; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="header">
+  <a class="back-link" href="../index.html" title="All demos">&larr;</a>
+  <div class="header-title">
+    <h1>Doppler Effect</h1>
+    <p>Skolnik — Doppler Frequency Shift in Radar</p>
+  </div>
+  <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"></button>
+</div>
+<div class="container">
+  <div class="controls">
+    <div class="control-group">
+      <h3>Radar</h3>
+      <label>Carrier Freq f<sub>c</sub> (GHz) <span class="val" id="v-fc">10</span></label>
+      <input type="range" id="fc" min="1" max="100" step="1" value="10">
+      <select id="preset">
+        <option value="">— Presets —</option>
+        <option value="77">Automotive (77 GHz)</option>
+        <option value="10">X-band (10 GHz)</option>
+        <option value="3">S-band (3 GHz)</option>
+        <option value="24">K-band (24 GHz)</option>
+        <option value="0.433">UHF (433 MHz)</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <h3>Target</h3>
+      <label>Radial Velocity (m/s) <span class="val" id="v-vel">30</span></label>
+      <input type="range" id="vel" min="-200" max="200" step="1" value="30">
+      <label>Approach Angle &theta; (deg) <span class="val" id="v-angle">0</span></label>
+      <input type="range" id="angle" min="0" max="90" step="1" value="0">
+    </div>
+    <div class="control-group">
+      <h3>Pulse-Doppler</h3>
+      <label>PRF (kHz) <span class="val" id="v-prf">10</span></label>
+      <input type="range" id="prf" min="1" max="100" step="1" value="10">
+      <label>Number of Pulses N <span class="val" id="v-npulse">32</span></label>
+      <input type="range" id="npulse" min="4" max="128" step="4" value="32">
+    </div>
+    <div class="control-group">
+      <h3>Computed</h3>
+      <div class="metric"><span class="label">Wavelength &lambda;</span><span class="value" id="m-lam">—</span></div>
+      <div class="metric"><span class="label">Doppler f<sub>d</sub></span><span class="value" id="m-fd">—</span></div>
+      <div class="metric"><span class="label">Effective velocity</span><span class="value" id="m-veff">—</span></div>
+      <div class="metric"><span class="label">Unambiguous v<sub>max</sub></span><span class="value" id="m-vmax">—</span></div>
+      <div class="metric"><span class="label">Velocity resolution</span><span class="value" id="m-dv">—</span></div>
+    </div>
+    <div class="info-box">
+      <strong>Doppler Shift</strong><br>
+      <code>f<sub>d</sub> = 2v cos(&theta;) / &lambda;</code><br><br>
+      Approaching (&nearr;) &rarr; positive f<sub>d</sub><br>
+      Receding (&searr;) &rarr; negative f<sub>d</sub><br><br>
+      <strong>PRF limits:</strong><br>
+      <code>v<sub>max</sub> = &lambda; PRF / 4</code><br>
+      Velocity aliasing if |f<sub>d</sub>| &gt; PRF/2
+    </div>
+  </div>
+  <div class="plots">
+    <div class="plot" id="plot-tx-rx"></div>
+    <div class="plot" id="plot-spectrum"></div>
+    <div class="plot" id="plot-fd-vel"></div>
+    <div class="plot" id="plot-ambiguity"></div>
+  </div>
+</div>
+<script>
+var _t=THEMES[curTheme];var plotBg=_t.plotBg,paperBg=_t.paperBg,gridColor=_t.gridColor,textColor=_t.textColor;
+var lo={paper_bgcolor:paperBg,plot_bgcolor:plotBg,font:{color:textColor,size:11},margin:{t:40,r:16,b:40,l:55},xaxis:{gridcolor:gridColor,zerolinecolor:_t.zeroLine},yaxis:{gridcolor:gridColor,zerolinecolor:_t.zeroLine}};
+
+const c=3e8;
+
+function update(){
+  const fc=+document.getElementById('fc').value*1e9;
+  const vel=+document.getElementById('vel').value;
+  const angle=+document.getElementById('angle').value;
+  const prf=+document.getElementById('prf').value*1e3;
+  const Np=+document.getElementById('npulse').value;
+
+  document.getElementById('v-fc').textContent=(fc/1e9).toFixed(0);
+  document.getElementById('v-vel').textContent=vel;
+  document.getElementById('v-angle').textContent=angle;
+  document.getElementById('v-prf').textContent=prf/1e3;
+  document.getElementById('v-npulse').textContent=Np;
+
+  const lambda=c/fc;
+  const vEff=vel*Math.cos(angle*Math.PI/180);
+  const fd=2*vEff/lambda;
+  const vmax=lambda*prf/4;
+  const dv=lambda*prf/(2*Np)/2; // velocity resolution
+
+  document.getElementById('m-lam').textContent=(lambda*1e3).toFixed(2)+' mm';
+  document.getElementById('m-fd').textContent=(Math.abs(fd)<1e3?(fd.toFixed(1)+' Hz'):(fd/1e3).toFixed(2)+' kHz');
+  document.getElementById('m-veff').textContent=vEff.toFixed(1)+' m/s';
+  document.getElementById('m-vmax').textContent=vmax.toFixed(1)+' m/s';
+  document.getElementById('m-dv').textContent=dv.toFixed(2)+' m/s';
+
+  // Plot 1: Tx and Rx signals (baseband representation)
+  const nCycles=8;
+  const fDisplay=5; // display frequency for visualization
+  const nPts=500;
+  const tMax=nCycles/fDisplay;
+  const t=Array.from({length:nPts},(_,i)=>i*tMax/nPts);
+
+  const fdNorm=fd/(fc)*fDisplay*20; // scale for visibility
+  const tx=t.map(v=>Math.cos(2*Math.PI*fDisplay*v));
+  const rx=t.map(v=>Math.cos(2*Math.PI*(fDisplay+fdNorm)*v));
+
+  Plotly.react('plot-tx-rx',[
+    {x:t.map(v=>v*1e3),y:tx,mode:'lines',line:{color:'#60a5fa',width:2},name:'Transmitted'},
+    {x:t.map(v=>v*1e3),y:rx,mode:'lines',line:{color:'#f472b6',width:2},name:'Received (Doppler shifted)'},
+  ],{...lo,title:{text:`Tx vs Rx (Doppler shift = ${fd>=0?'+':''}${(fd/1e3).toFixed(2)} kHz)`,font:{size:13}},xaxis:{...lo.xaxis,title:'Time (ms)'},yaxis:{...lo.yaxis,title:'Amplitude',range:[-1.5,1.5]},legend:{x:0.5,y:1}},{responsive:true});
+
+  // Plot 2: Slow-time spectrum (Doppler processing)
+  // Simulate pulse-to-pulse phase: each pulse has phase shift 2*pi*fd/PRF
+  const phasePerPulse=2*Math.PI*fd/prf;
+  const pulsePhases=Array.from({length:Np},(_,m)=>Math.cos(phasePerPulse*m));
+  const pulsePhasesSin=Array.from({length:Np},(_,m)=>Math.sin(phasePerPulse*m));
+
+  // Doppler FFT
+  const Nfft=256;
+  const dopMag=new Float64Array(Nfft);
+  const win=Array.from({length:Np},(_,i)=>0.5*(1-Math.cos(2*Math.PI*i/Np)));
+  for(let k=0;k<Nfft;k++){
+    let re=0,im=0;
+    for(let m=0;m<Np;m++){
+      const a=-2*Math.PI*k*m/Nfft;
+      re+=(pulsePhases[m]*win[m])*Math.cos(a)-(pulsePhasesSin[m]*win[m])*Math.sin(a);
+      im+=(pulsePhases[m]*win[m])*Math.sin(a)+(pulsePhasesSin[m]*win[m])*Math.cos(a);
+    }
+    dopMag[k]=20*Math.log10(Math.sqrt(re*re+im*im)/Np+1e-10);
+  }
+  // Frequency axis: -PRF/2 to PRF/2
+  const fAxis=Array.from({length:Nfft},(_,k)=>((k+Nfft/2)%Nfft-Nfft/2)*prf/Nfft);
+  const reorderedMag=Array.from({length:Nfft},(_,k)=>dopMag[(k+Nfft/2)%Nfft]);
+  const velAxisDop=fAxis.map(f=>f*lambda/2);
+
+  Plotly.react('plot-spectrum',[
+    {x:velAxisDop,y:reorderedMag,mode:'lines',line:{color:'#4ade80',width:2.5},name:'Doppler Spectrum'},
+  ],{...lo,title:{text:`Doppler Spectrum (N=${Np} pulses)`,font:{size:13}},xaxis:{...lo.xaxis,title:'Velocity (m/s)'},yaxis:{...lo.yaxis,title:'Magnitude (dB)',range:[-50,5]},
+    shapes:[{type:'line',x0:vEff,x1:vEff,y0:-50,y1:5,line:{color:'#facc15',width:1.5,dash:'dash'}}],
+    annotations:[{x:vEff,y:2,text:`v=${vEff.toFixed(1)} m/s`,showarrow:false,font:{color:'#facc15',size:10},yshift:10}]
+  },{responsive:true});
+
+  // Plot 3: fd vs velocity for different frequencies
+  const freqBands=[{f:3e9,name:'S-band (3 GHz)',color:'#60a5fa'},{f:10e9,name:'X-band (10 GHz)',color:'#4ade80'},{f:24e9,name:'K-band (24 GHz)',color:'#facc15'},{f:77e9,name:'77 GHz',color:'#f472b6'}];
+  const velRange=Array.from({length:200},(_,i)=>-100+i);
+  const fdTraces=freqBands.map(b=>({
+    x:velRange,y:velRange.map(v=>2*v/(c/b.f)/1e3),mode:'lines',line:{color:b.color,width:b.f===fc?3:1.5,dash:b.f===fc?'solid':'dot'},name:b.name
+  }));
+  fdTraces.push({x:[vEff],y:[fd/1e3],mode:'markers',marker:{size:14,color:'#ef4444',symbol:'star'},name:'Current'});
+
+  Plotly.react('plot-fd-vel',fdTraces,{...lo,title:{text:'Doppler Shift vs Velocity (different bands)',font:{size:13}},xaxis:{...lo.xaxis,title:'Velocity (m/s)'},yaxis:{...lo.yaxis,title:'Doppler (kHz)'},legend:{font:{size:9}}},{responsive:true});
+
+  // Plot 4: Velocity ambiguity diagram
+  // Show how velocity wraps with PRF
+  const trueVel=Array.from({length:400},(_,i)=>-200+i);
+  const measuredVel=trueVel.map(v=>{
+    const fdv=2*v/lambda;
+    // Wrap to [-PRF/2, PRF/2]
+    let fdWrapped=fdv%prf;
+    if(fdWrapped>prf/2) fdWrapped-=prf;
+    if(fdWrapped<-prf/2) fdWrapped+=prf;
+    return fdWrapped*lambda/2;
+  });
+
+  Plotly.react('plot-ambiguity',[
+    {x:trueVel,y:trueVel,mode:'lines',line:{color:'#4b5563',width:1,dash:'dot'},name:'True (no aliasing)'},
+    {x:trueVel,y:measuredVel,mode:'lines',line:{color:'#a78bfa',width:2.5},name:'Measured (PRF limited)'},
+    {x:[vEff],y:[vEff],mode:'markers',marker:{size:12,color:'#ef4444',symbol:'star'},name:'Current target'},
+  ],{...lo,title:{text:`Velocity Ambiguity (v_max = \u00B1${vmax.toFixed(1)} m/s)`,font:{size:13}},xaxis:{...lo.xaxis,title:'True Velocity (m/s)'},yaxis:{...lo.yaxis,title:'Measured Velocity (m/s)'},
+    shapes:[
+      {type:'rect',x0:-vmax,x1:vmax,y0:-vmax,y1:vmax,fillcolor:'rgba(74,222,128,0.05)',line:{color:'#4ade80',dash:'dash',width:1}},
+    ],
+    legend:{font:{size:9},x:0.05,y:1}
+  },{responsive:true});
+}
+
+document.getElementById('preset').addEventListener('change',e=>{
+  if(e.target.value){document.getElementById('fc').value=e.target.value;update();}
+});
+['fc','vel','angle','prf','npulse'].forEach(id=>document.getElementById(id).addEventListener('input',update));
+update();
+</script>
+</body>
+</html>

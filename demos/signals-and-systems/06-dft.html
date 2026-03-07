@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+<link rel="stylesheet" href="../theme.css">
+<title>DFT Explorer</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="../theme.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Pretendard', 'Inter', system-ui, -apple-system, sans-serif; background: #111827; color: #d1d5db; }
+  .header { padding: 1.2rem 2rem; background: #1f2937; border-bottom: 1px solid #374151; }
+  .header h1 { font-size: 1.4rem; font-weight: 600; }
+  .header p { font-size: 0.85rem; color: #9ca3af; margin-top: 0.3rem; }
+  .container { display: grid; grid-template-columns: 300px 1fr; height: calc(100vh - 80px); }
+  .controls { padding: 1.2rem; background: #1f2937; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; }
+  .control-group { background: #111827; border-radius: 8px; padding: 1rem; }
+  .control-group h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 0.7rem; }
+  label { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin-bottom: 0.3rem; }
+  label span.val { color: #60a5fa; font-family: monospace; }
+  input[type=range] { width: 100%; accent-color: #60a5fa; margin-bottom: 0.5rem; }
+  select { width: 100%; padding: 0.4rem; background: #1f2937; color: #d1d5db; border: 1px solid #374151; border-radius: 6px; font-size: 0.85rem; margin-bottom: 0.5rem; }
+  .plots { padding: 1rem; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 0.5rem; }
+  .plot { background: #1f2937; border-radius: 8px; }
+  .info-box { background: #111827; border-radius: 8px; padding: 0.8rem 1rem; font-size: 0.8rem; line-height: 1.6; color: #9ca3af; }
+  .info-box code { color: #60a5fa; }
+  .metric { display: flex; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid #1f2937; }
+  .metric:last-child { border-bottom: none; }
+  .metric .label { color: #9ca3af; }
+  .metric .value { color: #60a5fa; font-family: monospace; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="header">
+  <a class="back-link" href="../index.html" title="All demos">&larr;</a>
+  <div class="header-title">
+    <h1>DFT Explorer</h1>
+    <p>Practical Discrete Fourier Transform — N, fs, Frequency Resolution</p>
+  </div>
+  <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"></button>
+</div>
+<div class="container">
+  <div class="controls">
+    <div class="control-group">
+      <h3>Signal</h3>
+      <select id="signal">
+        <option value="single">Single Sinusoid</option>
+        <option value="dual">Two Close Sinusoids</option>
+        <option value="multi">Multi-tone (3 freqs)</option>
+        <option value="chirp">Short Chirp Burst</option>
+      </select>
+      <label>Signal freq f<sub>1</sub> (Hz) <span class="val" id="v-f1">50</span></label>
+      <input type="range" id="f1" min="5" max="200" step="1" value="50">
+      <label>f<sub>2</sub> (Hz) — for dual/multi <span class="val" id="v-f2">55</span></label>
+      <input type="range" id="f2" min="5" max="200" step="1" value="55">
+    </div>
+    <div class="control-group">
+      <h3>DFT Parameters</h3>
+      <label>N (DFT length) <span class="val" id="v-N">64</span></label>
+      <input type="range" id="N" min="8" max="512" step="1" value="64">
+      <label>f<sub>s</sub> (sampling freq) <span class="val" id="v-fs">500</span></label>
+      <input type="range" id="fs" min="50" max="1000" step="10" value="500">
+    </div>
+    <div class="control-group">
+      <h3>Computed Metrics</h3>
+      <div class="metric"><span class="label">Freq Resolution &Delta;f</span><span class="value" id="m-df">—</span></div>
+      <div class="metric"><span class="label">Observation Time T</span><span class="value" id="m-T">—</span></div>
+      <div class="metric"><span class="label">Max Freq (fs/2)</span><span class="value" id="m-fmax">—</span></div>
+      <div class="metric"><span class="label">Freq Bins</span><span class="value" id="m-bins">—</span></div>
+    </div>
+    <div class="info-box">
+      <strong>Key Relations</strong><br>
+      <code>&Delta;f = f<sub>s</sub> / N = 1 / T</code><br>
+      <code>f<sub>max</sub> = f<sub>s</sub> / 2</code><br><br>
+      <strong>To resolve two close frequencies:</strong><br>
+      Need <code>&Delta;f &lt; |f<sub>1</sub> - f<sub>2</sub>|</code><br>
+      &rarr; Increase N (more samples) or decrease f<sub>s</sub> (longer observation)<br><br>
+      <strong>Spectral leakage:</strong> occurs when signal frequency doesn't fall exactly on a DFT bin.
+    </div>
+  </div>
+  <div class="plots">
+    <div class="plot" id="plot-time"></div>
+    <div class="plot" id="plot-mag"></div>
+    <div class="plot" id="plot-phase"></div>
+    <div class="plot" id="plot-leakage"></div>
+  </div>
+</div>
+<script>
+var _t=THEMES[curTheme];var plotBg=_t.plotBg,paperBg=_t.paperBg,gridColor=_t.gridColor,textColor=_t.textColor;
+var lo={paper_bgcolor:paperBg,plot_bgcolor:plotBg,font:{color:textColor,size:11},margin:{t:40,r:16,b:40,l:55},xaxis:{gridcolor:gridColor,zerolinecolor:_t.zeroLine},yaxis:{gridcolor:gridColor,zerolinecolor:_t.zeroLine}};
+
+function dft(x) {
+  const N = x.length;
+  const Re = new Float64Array(N), Im = new Float64Array(N);
+  for(let k=0;k<N;k++) {
+    for(let n=0;n<N;n++) {
+      const ang = -2*Math.PI*k*n/N;
+      Re[k] += x[n]*Math.cos(ang);
+      Im[k] += x[n]*Math.sin(ang);
+    }
+  }
+  return {Re, Im};
+}
+
+function generateSignal(type, f1, f2, N, fs) {
+  const t = Array.from({length:N},(_,i)=>i/fs);
+  let x;
+  switch(type) {
+    case 'single':
+      x = t.map(v=>Math.cos(2*Math.PI*f1*v));
+      break;
+    case 'dual':
+      x = t.map(v=>Math.cos(2*Math.PI*f1*v)+Math.cos(2*Math.PI*f2*v));
+      break;
+    case 'multi':
+      x = t.map(v=>Math.cos(2*Math.PI*f1*v)+0.7*Math.cos(2*Math.PI*f2*v)+0.5*Math.cos(2*Math.PI*(f2+30)*v));
+      break;
+    case 'chirp':
+      x = t.map(v=>Math.cos(2*Math.PI*(f1*v+50*v*v)));
+      break;
+  }
+  return {t, x};
+}
+
+function update() {
+  const sigType = document.getElementById('signal').value;
+  const f1 = +document.getElementById('f1').value;
+  const f2 = +document.getElementById('f2').value;
+  const N = +document.getElementById('N').value;
+  const fs = +document.getElementById('fs').value;
+
+  document.getElementById('v-f1').textContent = f1;
+  document.getElementById('v-f2').textContent = f2;
+  document.getElementById('v-N').textContent = N;
+  document.getElementById('v-fs').textContent = fs;
+
+  const df = fs/N;
+  const T = N/fs;
+  document.getElementById('m-df').textContent = df.toFixed(2) + ' Hz';
+  document.getElementById('m-T').textContent = (T*1000).toFixed(1) + ' ms';
+  document.getElementById('m-fmax').textContent = (fs/2).toFixed(0) + ' Hz';
+  document.getElementById('m-bins').textContent = Math.floor(N/2+1);
+
+  const {t, x} = generateSignal(sigType, f1, f2, N, fs);
+  const {Re, Im} = dft(x);
+
+  // Magnitude and phase (one-sided)
+  const nBins = Math.floor(N/2)+1;
+  const freqBins = Array.from({length:nBins},(_,i)=>i*df);
+  const mag = Array.from({length:nBins},(_,i)=>2*Math.sqrt(Re[i]**2+Im[i]**2)/N);
+  mag[0] /= 2; // DC
+  if(N%2===0) mag[nBins-1] /= 2;
+  const phase = Array.from({length:nBins},(_,i)=>Math.atan2(Im[i],Re[i])*180/Math.PI);
+  // Zero out phase where magnitude is tiny
+  for(let i=0;i<nBins;i++) if(mag[i]<0.01) phase[i]=0;
+
+  // Time domain
+  const stemTraces = [{x:t,y:x,mode:'markers+lines',marker:{size:4,color:'#60a5fa'},line:{color:'#60a5fa',width:1},name:'x[n]'}];
+  // Also show continuous for reference
+  const tHi = Array.from({length:2000},(_,i)=>i*(N/fs)/2000);
+  let xHi;
+  switch(sigType) {
+    case 'single': xHi=tHi.map(v=>Math.cos(2*Math.PI*f1*v)); break;
+    case 'dual': xHi=tHi.map(v=>Math.cos(2*Math.PI*f1*v)+Math.cos(2*Math.PI*f2*v)); break;
+    case 'multi': xHi=tHi.map(v=>Math.cos(2*Math.PI*f1*v)+0.7*Math.cos(2*Math.PI*f2*v)+0.5*Math.cos(2*Math.PI*(f2+30)*v)); break;
+    case 'chirp': xHi=tHi.map(v=>Math.cos(2*Math.PI*(f1*v+50*v*v))); break;
+  }
+  stemTraces.push({x:tHi,y:xHi,mode:'lines',line:{color:'#4b5563',width:1},name:'Continuous',opacity:0.4});
+
+  Plotly.react('plot-time', stemTraces, {...lo, title:{text:`Time Domain (N=${N}, T=${(T*1000).toFixed(1)}ms)`,font:{size:13}}, xaxis:{...lo.xaxis,title:'Time (s)'}, yaxis:{...lo.yaxis,title:'Amplitude'}, legend:{x:0.65,y:1}}, {responsive:true});
+
+  // Magnitude spectrum with bin markers
+  const binColors = mag.map(v=>v>0.05?'#60a5fa':'#4b5563');
+  Plotly.react('plot-mag', [
+    {x:freqBins,y:mag,type:'bar',marker:{color:binColors},name:'|X[k]|',width:df*0.7},
+  ], {...lo, title:{text:`Magnitude Spectrum |X[k]|  (\u0394f=${df.toFixed(2)} Hz)`,font:{size:13}}, xaxis:{...lo.xaxis,title:'Frequency (Hz)',range:[0,fs/2]}, yaxis:{...lo.yaxis,title:'Magnitude'}, showlegend:false,
+    annotations: sigType==='dual'&&Math.abs(f1-f2)<df ? [{x:(f1+f2)/2,y:Math.max(...mag)*1.1,text:`Cannot resolve! \u0394f=${df.toFixed(1)} > |f1-f2|=${Math.abs(f1-f2)}`,showarrow:false,font:{color:'#ef4444',size:11}}] : []
+  }, {responsive:true});
+
+  // Phase spectrum
+  Plotly.react('plot-phase', [{
+    x:freqBins,y:phase,type:'bar',marker:{color:'#a78bfa'},name:'Phase',width:df*0.7
+  }], {...lo, title:{text:'Phase Spectrum \u2220X[k] (degrees)',font:{size:13}}, xaxis:{...lo.xaxis,title:'Frequency (Hz)',range:[0,fs/2]}, yaxis:{...lo.yaxis,title:'Phase (deg)',range:[-200,200]}, showlegend:false}, {responsive:true});
+
+  // Leakage demo: show what happens with on-bin vs off-bin
+  // Use single tone at f1, compute DFT, check if f1 falls on bin
+  const nearestBin = Math.round(f1/df);
+  const onBinFreq = nearestBin*df;
+  const offset = f1 - onBinFreq;
+  const isOnBin = Math.abs(offset) < 0.01;
+
+  // Compute high-res spectrum via zero-padding
+  const Npad = 2048;
+  const xPad = new Float64Array(Npad);
+  for(let i=0;i<N;i++) xPad[i]=x[i];
+  const {Re:RePad,Im:ImPad} = dft(Array.from(xPad));
+  const dfPad = fs/Npad;
+  const nBinsPad = Math.floor(Npad/2)+1;
+  const freqPad = Array.from({length:nBinsPad},(_,i)=>i*dfPad);
+  const magPad = Array.from({length:nBinsPad},(_,i)=>2*Math.sqrt(RePad[i]**2+ImPad[i]**2)/N); // normalize by original N
+  magPad[0]/=2;
+
+  Plotly.react('plot-leakage', [
+    {x:freqPad,y:magPad,mode:'lines',line:{color:'#facc15',width:2},name:'Zero-padded (interpolated)'},
+    {x:freqBins,y:mag,mode:'markers',marker:{size:8,color:'#60a5fa',symbol:'diamond'},name:'DFT bins'},
+  ], {...lo, title:{text:isOnBin?'On-bin: No Leakage':'Off-bin: Spectral Leakage!',font:{size:13,color:isOnBin?'#4ade80':'#ef4444'}}, xaxis:{...lo.xaxis,title:'Frequency (Hz)',range:[Math.max(0,f1-50),Math.min(fs/2,f1+50)]}, yaxis:{...lo.yaxis,title:'Magnitude'}, legend:{x:0.55,y:1}}, {responsive:true});
+}
+
+['signal'].forEach(id=>document.getElementById(id).addEventListener('change',update));
+['f1','f2','N','fs'].forEach(id=>document.getElementById(id).addEventListener('input',update));
+update();
+</script>
+</body>
+</html>

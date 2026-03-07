@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+<link rel="stylesheet" href="../theme.css">
+<title>Spread Spectrum &amp; CDMA</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="../theme.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Pretendard', 'Inter', system-ui, -apple-system, sans-serif; background: #111827; color: #d1d5db; }
+  .header { padding: 1.2rem 2rem; background: #1f2937; border-bottom: 1px solid #374151; }
+  .header h1 { font-size: 1.4rem; font-weight: 600; }
+  .header p { font-size: 0.85rem; color: #9ca3af; margin-top: 0.3rem; }
+  .container { display: grid; grid-template-columns: 280px 1fr; height: calc(100vh - 80px); }
+  .controls { padding: 1.2rem; background: #1f2937; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; }
+  .control-group { background: #111827; border-radius: 8px; padding: 1rem; }
+  .control-group h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 0.7rem; }
+  label { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin-bottom: 0.3rem; }
+  label span.val { color: #60a5fa; font-family: monospace; }
+  input[type=range] { width: 100%; accent-color: #60a5fa; margin-bottom: 0.5rem; }
+  select { width: 100%; padding: 0.4rem; background: #1f2937; color: #d1d5db; border: 1px solid #374151; border-radius: 6px; font-size: 0.85rem; margin-bottom: 0.5rem; }
+  .plots { padding: 1rem; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 0.5rem; }
+  .plot { background: #1f2937; border-radius: 8px; }
+  .info-box { background: #111827; border-radius: 8px; padding: 0.8rem 1rem; font-size: 0.8rem; line-height: 1.6; color: #9ca3af; }
+  .info-box code { color: #60a5fa; }
+  .metric { display: flex; justify-content: space-between; padding: 0.25rem 0; border-bottom: 1px solid #1f2937; }
+  .metric:last-child { border-bottom: none; }
+  .metric .label { color: #9ca3af; font-size: 0.8rem; }
+  .metric .value { color: #60a5fa; font-family: monospace; font-weight: 600; font-size: 0.8rem; }
+</style>
+</head>
+<body>
+<div class="header">
+  <a class="back-link" href="../index.html" title="All demos">&larr;</a>
+  <div class="header-title">
+    <h1>Spread Spectrum &amp; CDMA</h1>
+    <p>Proakis &amp; Salehi &mdash; Direct Sequence Spread Spectrum</p>
+  </div>
+  <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"></button>
+</div>
+<div class="container">
+  <div class="controls">
+    <div class="control-group">
+      <h3>Spreading Parameters</h3>
+      <label>Spreading factor <span class="val" id="v-sf">16</span></label>
+      <input type="range" id="sf" min="0" max="4" step="1" value="2">
+      <label>PN code type</label>
+      <select id="pntype">
+        <option value="walsh">Walsh-Hadamard</option>
+        <option value="gold">Gold (pseudo-random)</option>
+        <option value="mseq">m-sequence</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <h3>Channel &amp; Users</h3>
+      <label>Number of users <span class="val" id="v-nusers">2</span></label>
+      <input type="range" id="nusers" min="1" max="8" step="1" value="2">
+      <label>SNR (dB) <span class="val" id="v-snr">10</span></label>
+      <input type="range" id="snr" min="-10" max="30" step="1" value="10">
+      <label>Near-far ratio (dB) <span class="val" id="v-nf">0</span></label>
+      <input type="range" id="nf" min="0" max="30" step="1" value="0">
+    </div>
+    <div class="control-group">
+      <h3>Metrics</h3>
+      <div class="metric"><span class="label">Processing gain</span><span class="value" id="m-pg">-</span></div>
+      <div class="metric"><span class="label">Effective SNR</span><span class="value" id="m-esnr">-</span></div>
+      <div class="metric"><span class="label">Simulated BER (U1)</span><span class="value" id="m-ber">-</span></div>
+      <div class="metric"><span class="label">Near-far MAI</span><span class="value" id="m-mai">-</span></div>
+    </div>
+    <div class="info-box">
+      <strong>DS-SS Key Equations</strong><br>
+      <code>Processing Gain = 10log&#x2081;&#x2080;(SF) dB</code><br>
+      <code>Jamming margin = PG &minus; SNR<sub>min</sub></code><br><br>
+      <strong>Near-far problem:</strong> Strong interferer dominates after despreading.<br>
+      <code>MAI = (N<sub>u</sub>&minus;1) &times; P<sub>interference</sub> / SF</code><br><br>
+      Walsh codes are <em>orthogonal</em>: zero cross-correlation.<br>
+      Gold codes are <em>quasi-orthogonal</em>: bounded cross-correlation.
+    </div>
+  </div>
+  <div class="plots">
+    <div class="plot" id="plot-time"></div>
+    <div class="plot" id="plot-freq"></div>
+    <div class="plot" id="plot-multi"></div>
+    <div class="plot" id="plot-ber"></div>
+  </div>
+</div>
+<script>
+var _t=THEMES[curTheme];var plotBg=_t.plotBg,paperBg=_t.paperBg,gridColor=_t.gridColor,textColor=_t.textColor;
+var lo={paper_bgcolor:paperBg,plot_bgcolor:plotBg,font:{color:textColor,size:11},margin:{t:40,r:16,b:40,l:50},xaxis:{gridcolor:gridColor,zerolinecolor:_t.zeroLine},yaxis:{gridcolor:gridColor,zerolinecolor:_t.zeroLine}};
+
+const SF_VALUES=[4,8,16,32,64];
+const USER_COLORS=['#60a5fa','#4ade80','#f472b6','#facc15','#fb923c','#a78bfa','#34d399','#f87171'];
+
+function randn(){let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+
+// Walsh-Hadamard matrix (size must be power of 2)
+function walshMatrix(n){
+  if(n===1)return[[1]];
+  const h=walshMatrix(n/2);
+  const rows=[];
+  for(const r of h)rows.push([...r,...r]);
+  for(const r of h)rows.push([...r,...r.map(x=>-x)]);
+  return rows;
+}
+
+// m-sequence via LFSR (maximal length)
+function mseq(sf){
+  // Use a simple degree-floor(log2(sf)) LFSR
+  const deg=Math.ceil(Math.log2(sf));
+  const len=Math.pow(2,deg)-1;
+  // Primitive polynomials: tap configs for small degrees
+  const taps={2:[2,1],3:[3,1],4:[4,1],5:[5,2],6:[6,1],7:[7,1]};
+  const t=taps[Math.min(deg,7)]||[deg,1];
+  let reg=Array(deg).fill(1);
+  const seq=[];
+  for(let i=0;i<sf;i++){
+    seq.push(reg[deg-1]?1:-1);
+    const fb=reg[t[0]-1]^reg[t[1]-1];
+    reg.unshift(fb);reg.pop();
+  }
+  return seq;
+}
+
+// Gold-like code: XOR of two m-sequences with offset
+function goldCode(sf,userIdx){
+  const base=mseq(sf);
+  const shifted=[];
+  const offset=(userIdx*7)%sf;
+  for(let i=0;i<sf;i++)shifted.push(base[(i+offset)%sf]);
+  return base.map((b,i)=>b*shifted[i]); // product -> Gold-like
+}
+
+function getCodes(pntype,sf,nU){
+  const codes=[];
+  if(pntype==='walsh'){
+    const W=walshMatrix(sf);
+    for(let u=0;u<nU;u++)codes.push(W[u%sf]);
+  } else if(pntype==='mseq'){
+    const base=mseq(sf);
+    for(let u=0;u<nU;u++){
+      const shifted=[];
+      for(let i=0;i<sf;i++)shifted.push(base[(i+u*Math.floor(sf/nU))%sf]);
+      codes.push(shifted);
+    }
+  } else { // gold
+    for(let u=0;u<nU;u++)codes.push(goldCode(sf,u));
+  }
+  return codes;
+}
+
+function qFunc(x){
+  // Approximation of Q-function
+  if(x<0)return 1-qFunc(-x);
+  if(x>8)return 0;
+  const t=1/(1+0.2316419*x);
+  const p=t*(0.319381530+t*(-0.356563782+t*(1.781477937+t*(-1.821255978+t*1.330274429))));
+  return p*Math.exp(-x*x/2)/(Math.sqrt(2*Math.PI));
+}
+
+function update(){
+  const sfIdx=+document.getElementById('sf').value;
+  const sf=SF_VALUES[sfIdx];
+  const pntype=document.getElementById('pntype').value;
+  const nU=+document.getElementById('nusers').value;
+  const snrDb=+document.getElementById('snr').value;
+  const nfDb=+document.getElementById('nf').value;
+
+  document.getElementById('v-sf').textContent=sf;
+  document.getElementById('v-nusers').textContent=nU;
+  document.getElementById('v-snr').textContent=snrDb;
+  document.getElementById('v-nf').textContent=nfDb;
+
+  const pg=10*Math.log10(sf);
+  const effSnr=snrDb+pg;
+  document.getElementById('m-pg').textContent=pg.toFixed(1)+' dB';
+  document.getElementById('m-esnr').textContent=effSnr.toFixed(1)+' dB';
+
+  const codes=getCodes(pntype,sf,Math.max(nU,1));
+  const nBits=8; // data bits per user to display
+  const nChips=nBits*sf;
+
+  // User 1 data and code
+  const data0=Array.from({length:nBits},()=>Math.round(Math.random())*2-1);
+  const code0=codes[0];
+
+  // Spread signal for user 1
+  const spread0=[];
+  for(let b=0;b<nBits;b++)for(let c=0;c<sf;c++)spread0.push(data0[b]*code0[c]);
+
+  // Add AWGN
+  const snrLin=Math.pow(10,snrDb/10);
+  const noiseStd=1/Math.sqrt(snrLin*sf);
+  const received=spread0.map(s=>s+noiseStd*randn());
+
+  // Despread user 1
+  const despread=[];
+  for(let b=0;b<nBits;b++){
+    let acc=0;
+    for(let c=0;c<sf;c++)acc+=received[b*sf+c]*code0[c];
+    despread.push(acc/sf);
+  }
+
+  // ---------- Plot 1: Time domain — data, code, spread, despread ----------
+  const chipIdx=Array.from({length:nChips},(_,i)=>i);
+  const bitIdx=Array.from({length:nBits},(_,i)=>i);
+
+  // Reconstruct piecewise-constant signals for display
+  const dataChips=[];
+  for(let b=0;b<nBits;b++)for(let c=0;c<sf;c++)dataChips.push(data0[b]);
+  const codeRepeated=[];
+  for(let b=0;b<nBits;b++)for(let c=0;c<sf;c++)codeRepeated.push(code0[c]);
+
+  // Despread repeated for chips display
+  const despreadChips=[];
+  for(let b=0;b<nBits;b++)for(let c=0;c<sf;c++)despreadChips.push(despread[b]);
+
+  Plotly.react('plot-time',[
+    {x:chipIdx,y:dataChips.map(v=>v+5),mode:'lines',line:{color:'#60a5fa',width:1.5,shape:'hv'},name:'Data bits (+5)'},
+    {x:chipIdx,y:codeRepeated.map(v=>v+2.5),mode:'lines',line:{color:'#4ade80',width:1,shape:'hv'},name:'PN code (+2.5)'},
+    {x:chipIdx,y:spread0,mode:'lines',line:{color:'#facc15',width:1,shape:'hv'},name:'Spread (chips)'},
+    {x:chipIdx,y:received,mode:'lines',line:{color:'#9ca3af',width:0.7},name:'Received (+noise)',opacity:0.6},
+    {x:chipIdx,y:despreadChips.map(v=>v-3),mode:'lines',line:{color:'#f472b6',width:1.5,shape:'hv'},name:'Despread (-3)'},
+  ],{...lo,
+    title:{text:`DS-SS Time Domain (SF=${sf}, ${pntype})`,font:{size:13}},
+    xaxis:{...lo.xaxis,title:'Chip Index'},
+    yaxis:{...lo.yaxis,title:'Amplitude (offset for clarity)'},
+    legend:{font:{size:9},x:0,y:1}
+  },{responsive:true});
+
+  // ---------- Plot 2: Frequency domain — narrowband vs spread ----------
+  const Nfft=256;
+  const freqNorm=Array.from({length:Nfft/2},(_,i)=>i/Nfft);
+
+  // Narrowband: sinc-like spectrum of one bit
+  const narrowPSD=freqNorm.map(f=>{
+    const x=Math.PI*f*nBits;
+    const s=x<1e-6?1:Math.sin(x)/x;
+    return s*s;
+  });
+  const narrowMax=Math.max(...narrowPSD);
+
+  // Spread: wider spectrum (SF times wider)
+  const spreadPSD=freqNorm.map(f=>{
+    const x=Math.PI*f*nBits/sf;
+    const s=x<1e-6?1:Math.sin(x)/x;
+    return s*s/sf;
+  });
+
+  const pgAnnot=pg.toFixed(1);
+  Plotly.react('plot-freq',[
+    {x:freqNorm,y:narrowPSD.map(v=>v/narrowMax),mode:'lines',line:{color:'#60a5fa',width:2},name:'Narrowband (pre-spread)',fill:'tozeroy',fillcolor:'#60a5fa22'},
+    {x:freqNorm,y:spreadPSD.map(v=>v/(1/sf)),mode:'lines',line:{color:'#f472b6',width:2},name:`Spread (SF=${sf})`,fill:'tozeroy',fillcolor:'#f472b622'},
+  ],{...lo,
+    title:{text:`Spectrum: Processing Gain = ${pgAnnot} dB`,font:{size:13}},
+    xaxis:{...lo.xaxis,title:'Normalized Frequency',range:[0,0.5]},
+    yaxis:{...lo.yaxis,title:'PSD (normalized)',range:[0,1.1]},
+    legend:{font:{size:9},x:0.5,y:1}
+  },{responsive:true});
+
+  // ---------- Plot 3: Multi-user — overlaid spread signals + decorrelation ----------
+  const multiTraces=[];
+  const nBits3=6;
+  const nChips3=nBits3*sf;
+  const chipIdx3=Array.from({length:nChips3},(_,i)=>i);
+  const nfLin=Math.pow(10,nfDb/10);
+
+  // Generate all user spread signals
+  const allSpread=[];
+  for(let u=0;u<nU;u++){
+    const dataU=Array.from({length:nBits3},()=>Math.round(Math.random())*2-1);
+    const codeU=codes[u];
+    const power=u===0?1:nfLin; // near-far: user 1 strong, others weak or strong
+    // Actually near-far means OTHER users are stronger than user 0
+    const powerU=u===0?1:nfLin;
+    const spreadU=[];
+    for(let b=0;b<nBits3;b++)for(let c=0;c<sf;c++)spreadU.push(dataU[b]*codeU[c]*Math.sqrt(powerU));
+    allSpread.push({spread:spreadU,data:dataU});
+    multiTraces.push({x:chipIdx3,y:spreadU,mode:'lines',line:{color:USER_COLORS[u],width:1},name:`User ${u+1}`,opacity:0.6});
+  }
+
+  // Composite received signal
+  const composite=chipIdx3.map(i=>allSpread.reduce((s,u)=>s+u.spread[i],0)+noiseStd*randn());
+  multiTraces.push({x:chipIdx3,y:composite,mode:'lines',line:{color:'#ffffff',width:1.5},name:'Composite',opacity:0.8});
+
+  // Correlator output for user 1
+  const corrOut=[];
+  for(let b=0;b<nBits3;b++){
+    let acc=0;
+    for(let c=0;c<sf;c++)acc+=composite[b*sf+c]*code0[c];
+    corrOut.push(acc/sf);
+  }
+  // Show decorrelated output as horizontal lines
+  const corrChips=[];
+  for(let b=0;b<nBits3;b++)for(let c=0;c<sf;c++)corrChips.push(corrOut[b]-3.5);
+  multiTraces.push({x:chipIdx3,y:corrChips,mode:'lines',line:{color:'#fbbf24',width:2,shape:'hv'},name:'User 1 despread (-3.5)'});
+
+  // MAI estimate
+  let maiPow=0;
+  if(nU>1){
+    for(let u=1;u<nU;u++){
+      let corr=0;
+      for(let c=0;c<sf;c++)corr+=codes[u][c]*code0[c];
+      const rho=corr/sf;
+      maiPow+=rho*rho*nfLin;
+    }
+  }
+  document.getElementById('m-mai').textContent=nU>1?(10*Math.log10(maiPow+1e-12)).toFixed(1)+' dB':'N/A';
+
+  // BER simulation for metrics
+  const nTrials=200;
+  let errors=0;
+  for(let t=0;t<nTrials;t++){
+    // Single bit, all users interfering
+    let rx=noiseStd*randn();
+    const bit0=Math.round(Math.random())*2-1;
+    for(let c=0;c<sf;c++)rx+=bit0*code0[c]/sf;
+    for(let u=1;u<nU;u++){
+      const codeU=codes[u];
+      const bitU=Math.round(Math.random())*2-1;
+      const powerU=Math.sqrt(nfLin);
+      let mai=0;
+      for(let c=0;c<sf;c++)mai+=bitU*codeU[c]*code0[c]/sf;
+      rx+=mai*powerU;
+    }
+    if(rx*bit0<0)errors++;
+  }
+  const berSim=errors/nTrials;
+  document.getElementById('m-ber').textContent=berSim<0.001?'<0.001':berSim.toFixed(3);
+
+  Plotly.react('plot-multi',multiTraces,{...lo,
+    title:{text:`Multi-user (${nU} users, near-far=${nfDb} dB)`,font:{size:13}},
+    xaxis:{...lo.xaxis,title:'Chip Index'},
+    yaxis:{...lo.yaxis,title:'Amplitude (offset for clarity)'},
+    legend:{font:{size:9},x:0,y:1}
+  },{responsive:true});
+
+  // ---------- Plot 4: BER vs SNR ----------
+  const snrRange=Array.from({length:41},(_,i)=>i-10); // -10 to 30 dB
+  const berIdeal=snrRange.map(s=>qFunc(Math.sqrt(2*Math.pow(10,s/10)))); // BPSK no spreading
+  const berWithPG=snrRange.map(s=>qFunc(Math.sqrt(2*sf*Math.pow(10,s/10)))); // with processing gain
+
+  // Near-far degraded BER for user 1 (approximate)
+  const nfLin2=Math.pow(10,nfDb/10);
+  const berNearFar=snrRange.map(s=>{
+    const snrLin2=Math.pow(10,s/10);
+    // Sinr: signal / (interference + noise)
+    const maiPower2=(nU-1)*nfLin2/sf;
+    const sinr=snrLin2/(1+maiPower2*snrLin2);
+    return qFunc(Math.sqrt(2*sf*sinr));
+  });
+
+  // Monte Carlo for current SNR
+  const berMC=snrRange.map(s=>{
+    const snrL=Math.pow(10,s/10);
+    const nStd=1/Math.sqrt(snrL*sf);
+    let err=0;
+    const nT=100;
+    for(let t=0;t<nT;t++){
+      let r=nStd*randn();
+      const b=Math.round(Math.random())*2-1;
+      for(let c=0;c<sf;c++)r+=b*code0[c]/sf;
+      if(r*b<0)err++;
+    }
+    return Math.max(err/nT,1e-4);
+  });
+
+  Plotly.react('plot-ber',[
+    {x:snrRange,y:berIdeal,mode:'lines',line:{color:'#ef4444',width:2,dash:'dash'},name:'BPSK (no spreading)'},
+    {x:snrRange,y:berWithPG,mode:'lines',line:{color:'#60a5fa',width:2},name:`DS-SS (SF=${sf}, PG=${pgAnnot}dB)`},
+    {x:snrRange,y:berNearFar,mode:'lines',line:{color:'#facc15',width:2,dash:'dot'},name:`Near-far (${nU}u, ${nfDb}dB)`},
+    {x:snrRange,y:berMC,mode:'markers',marker:{color:'#4ade80',size:4},name:'Monte Carlo'},
+    {x:[snrDb],y:[qFunc(Math.sqrt(2*sf*snrLin))],mode:'markers',marker:{color:'#ffffff',size:10,symbol:'star'},name:'Current SNR'},
+  ],{...lo,
+    title:{text:'BER vs SNR (BPSK)',font:{size:13}},
+    xaxis:{...lo.xaxis,title:'SNR (dB)',range:[-10,30]},
+    yaxis:{...lo.yaxis,title:'BER',type:'log',range:[-4,0]},
+    legend:{font:{size:9},x:0,y:0}
+  },{responsive:true});
+}
+
+['pntype'].forEach(id=>document.getElementById(id).addEventListener('change',update));
+['sf','nusers','snr','nf'].forEach(id=>document.getElementById(id).addEventListener('input',update));
+update();
+</script>
+</body>
+</html>

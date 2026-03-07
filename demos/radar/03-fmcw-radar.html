@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+<link rel="stylesheet" href="../theme.css">
+<title>FMCW Radar</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="../theme.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Pretendard', 'Inter', system-ui, -apple-system, sans-serif; background: #111827; color: #d1d5db; }
+  .header { padding: 1.2rem 2rem; background: #1f2937; border-bottom: 1px solid #374151; }
+  .header h1 { font-size: 1.4rem; font-weight: 600; }
+  .header p { font-size: 0.85rem; color: #9ca3af; margin-top: 0.3rem; }
+  .container { display: grid; grid-template-columns: 300px 1fr; height: calc(100vh - 80px); }
+  .controls { padding: 1.2rem; background: #1f2937; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; }
+  .control-group { background: #111827; border-radius: 8px; padding: 1rem; }
+  .control-group h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 0.7rem; }
+  label { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin-bottom: 0.3rem; }
+  label span.val { color: #60a5fa; font-family: monospace; }
+  input[type=range] { width: 100%; accent-color: #60a5fa; margin-bottom: 0.5rem; }
+  .plots { padding: 1rem; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr 1fr; gap: 0.5rem; }
+  .plot { background: #1f2937; border-radius: 8px; }
+  .info-box { background: #111827; border-radius: 8px; padding: 0.8rem 1rem; font-size: 0.8rem; line-height: 1.6; color: #9ca3af; }
+  .info-box code { color: #60a5fa; }
+  .metric { display: flex; justify-content: space-between; padding: 0.25rem 0; border-bottom: 1px solid #1f2937; font-size: 0.8rem; }
+  .metric:last-child { border-bottom: none; }
+  .metric .label { color: #9ca3af; }
+  .metric .value { color: #60a5fa; font-family: monospace; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="header">
+  <a class="back-link" href="../index.html" title="All demos">&larr;</a>
+  <div class="header-title">
+    <h1>FMCW Radar</h1>
+    <p>Stove / Richards — Frequency-Modulated Continuous Wave Radar</p>
+  </div>
+  <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"></button>
+</div>
+<div class="container">
+  <div class="controls">
+    <div class="control-group">
+      <h3>Waveform</h3>
+      <label>Bandwidth B (MHz) <span class="val" id="v-bw">150</span></label>
+      <input type="range" id="bw" min="10" max="1000" step="10" value="150">
+      <label>Chirp Duration T<sub>c</sub> (&mu;s) <span class="val" id="v-tc">50</span></label>
+      <input type="range" id="tc" min="10" max="500" step="5" value="50">
+      <label>Carrier Freq f<sub>c</sub> (GHz) <span class="val" id="v-fc">77</span></label>
+      <input type="range" id="fc" min="1" max="100" step="1" value="77">
+      <label>Number of Chirps <span class="val" id="v-nc">64</span></label>
+      <input type="range" id="nc" min="8" max="256" step="8" value="64">
+    </div>
+    <div class="control-group">
+      <h3>Target 1</h3>
+      <label>Range (m) <span class="val" id="v-r1">30</span></label>
+      <input type="range" id="r1" min="1" max="200" step="1" value="30">
+      <label>Velocity (m/s) <span class="val" id="v-v1">5</span></label>
+      <input type="range" id="v1" min="-50" max="50" step="0.5" value="5">
+    </div>
+    <div class="control-group">
+      <h3>Target 2</h3>
+      <label>Range (m) <span class="val" id="v-r2">80</span></label>
+      <input type="range" id="r2" min="1" max="200" step="1" value="80">
+      <label>Velocity (m/s) <span class="val" id="v-v2">-15</span></label>
+      <input type="range" id="v2" min="-50" max="50" step="0.5" value="-15">
+      <label>Amplitude (rel.) <span class="val" id="v-a2">0.7</span></label>
+      <input type="range" id="a2" min="0" max="1.5" step="0.1" value="0.7">
+    </div>
+    <div class="control-group">
+      <h3>Computed</h3>
+      <div class="metric"><span class="label">Range Resolution</span><span class="value" id="m-dr">—</span></div>
+      <div class="metric"><span class="label">Max Range</span><span class="value" id="m-rmax">—</span></div>
+      <div class="metric"><span class="label">Velocity Resolution</span><span class="value" id="m-dv">—</span></div>
+      <div class="metric"><span class="label">Max Velocity</span><span class="value" id="m-vmax">—</span></div>
+      <div class="metric"><span class="label">Beat freq (T1)</span><span class="value" id="m-fb1">—</span></div>
+      <div class="metric"><span class="label">Doppler (T1)</span><span class="value" id="m-fd1">—</span></div>
+    </div>
+    <div class="info-box">
+      <strong>FMCW Principle</strong><br>
+      Beat freq: <code>f<sub>b</sub> = 2BR/(cT<sub>c</sub>)</code><br>
+      Doppler: <code>f<sub>d</sub> = 2v/&lambda;</code><br><br>
+      Range res: <code>&Delta;R = c/(2B)</code><br>
+      Vel res: <code>&Delta;v = &lambda;/(2NT<sub>c</sub>)</code>
+    </div>
+  </div>
+  <div class="plots">
+    <div class="plot" id="plot-chirp"></div>
+    <div class="plot" id="plot-beat"></div>
+    <div class="plot" id="plot-range-fft"></div>
+    <div class="plot" id="plot-doppler-fft"></div>
+    <div class="plot" id="plot-rd-map"></div>
+    <div class="plot" id="plot-rd-cuts"></div>
+  </div>
+</div>
+<script>
+var _t=THEMES[curTheme];var plotBg=_t.plotBg,paperBg=_t.paperBg,gridColor=_t.gridColor,textColor=_t.textColor;
+var lo={paper_bgcolor:paperBg,plot_bgcolor:plotBg,font:{color:textColor,size:11},margin:{t:40,r:16,b:40,l:55},xaxis:{gridcolor:gridColor,zerolinecolor:_t.zeroLine},yaxis:{gridcolor:gridColor,zerolinecolor:_t.zeroLine}};
+
+const c = 3e8;
+
+function update() {
+  const B=+document.getElementById('bw').value*1e6;
+  const Tc=+document.getElementById('tc').value*1e-6;
+  const fc=+document.getElementById('fc').value*1e9;
+  const Nc=+document.getElementById('nc').value;
+  const R1=+document.getElementById('r1').value;
+  const V1=+document.getElementById('v1').value;
+  const R2=+document.getElementById('r2').value;
+  const V2=+document.getElementById('v2').value;
+  const A2=+document.getElementById('a2').value;
+
+  document.getElementById('v-bw').textContent=B/1e6;
+  document.getElementById('v-tc').textContent=Tc*1e6;
+  document.getElementById('v-fc').textContent=fc/1e9;
+  document.getElementById('v-nc').textContent=Nc;
+  document.getElementById('v-r1').textContent=R1;
+  document.getElementById('v-v1').textContent=V1;
+  document.getElementById('v-r2').textContent=R2;
+  document.getElementById('v-v2').textContent=V2;
+  document.getElementById('v-a2').textContent=A2.toFixed(1);
+
+  const lambda=c/fc;
+  const slope=B/Tc;
+  const Nfast=256; // range samples per chirp
+  const fs=Nfast/Tc; // ADC sampling rate
+
+  // Resolution and limits
+  const dR=c/(2*B);
+  const Rmax=fs*c*Tc/(2*B*2); // simplified: Nfast*dR/2 approx
+  const dv=lambda/(2*Nc*Tc);
+  const vmax=lambda/(4*Tc);
+
+  const fb1=2*B*R1/(c*Tc);
+  const fd1=2*V1/lambda;
+
+  document.getElementById('m-dr').textContent=dR.toFixed(2)+' m';
+  document.getElementById('m-rmax').textContent=(Nfast/2*dR).toFixed(0)+' m';
+  document.getElementById('m-dv').textContent=dv.toFixed(2)+' m/s';
+  document.getElementById('m-vmax').textContent=vmax.toFixed(1)+' m/s';
+  document.getElementById('m-fb1').textContent=(fb1/1e3).toFixed(1)+' kHz';
+  document.getElementById('m-fd1').textContent=fd1.toFixed(0)+' Hz';
+
+  // Generate beat signal matrix [Nc x Nfast]
+  const beatMatrix=[];
+  for(let m=0;m<Nc;m++){
+    const row=new Float64Array(Nfast);
+    for(let n=0;n<Nfast;n++){
+      const t=n/fs;
+      // Target 1
+      const tau1=2*R1/c;
+      const fb_1=slope*tau1;
+      const fd_1=2*V1/lambda;
+      const phase1=2*Math.PI*(fb_1*t+fd_1*m*Tc);
+      row[n]+=Math.cos(phase1);
+      // Target 2
+      const tau2=2*R2/c;
+      const fb_2=slope*tau2;
+      const fd_2=2*V2/lambda;
+      const phase2=2*Math.PI*(fb_2*t+fd_2*m*Tc);
+      row[n]+=A2*Math.cos(phase2);
+      // Noise
+      row[n]+=0.3*(Math.random()-0.5);
+    }
+    beatMatrix.push(row);
+  }
+
+  // Plot 1: Chirp frequency vs time (Tx and Rx)
+  const tChirp=Array.from({length:200},(_,i)=>i*Tc/199);
+  const fTx=tChirp.map(t=>fc+slope*t);
+  const tau1_=2*R1/c;
+  const fRx=tChirp.map(t=>{const tr=t-tau1_;return tr>=0?fc+slope*tr:null;});
+
+  Plotly.react('plot-chirp',[
+    {x:tChirp.map(v=>v*1e6),y:fTx.map(v=>v/1e9),mode:'lines',line:{color:'#60a5fa',width:2},name:'Tx'},
+    {x:tChirp.map(v=>v*1e6),y:fRx.map(v=>v?v/1e9:null),mode:'lines',line:{color:'#f472b6',width:2},name:'Rx (T1)'},
+  ],{...lo,title:{text:'FMCW Chirp (Tx vs Rx)',font:{size:13}},xaxis:{...lo.xaxis,title:'Time (\u00B5s)'},yaxis:{...lo.yaxis,title:'Frequency (GHz)'},legend:{x:0.05,y:1},
+    annotations:[{x:Tc*1e6*0.5,y:(fc+B*0.3)/1e9,text:`\u0394f = f_b`,showarrow:true,ay:-30,arrowcolor:'#facc15',font:{color:'#facc15',size:10}}]
+  },{responsive:true});
+
+  // Plot 2: Beat signal (first chirp)
+  const tBeat=Array.from({length:Nfast},(_,i)=>i/fs*1e6);
+  Plotly.react('plot-beat',[{x:tBeat,y:Array.from(beatMatrix[0]),mode:'lines',line:{color:'#4ade80',width:1.5}}],
+    {...lo,title:{text:'Beat Signal (1st chirp)',font:{size:13}},xaxis:{...lo.xaxis,title:'Time (\u00B5s)'},yaxis:{...lo.yaxis,title:'Amplitude'}},{responsive:true});
+
+  // Range FFT (first chirp)
+  const rangeFFT=new Float64Array(Nfast);
+  const win=Array.from({length:Nfast},(_,i)=>0.5*(1-Math.cos(2*Math.PI*i/Nfast)));
+  for(let k=0;k<Nfast/2;k++){
+    let re=0,im=0;
+    for(let n=0;n<Nfast;n++){
+      const a=-2*Math.PI*k*n/Nfast;
+      re+=beatMatrix[0][n]*win[n]*Math.cos(a);
+      im+=beatMatrix[0][n]*win[n]*Math.sin(a);
+    }
+    rangeFFT[k]=20*Math.log10(Math.sqrt(re*re+im*im)/Nfast+1e-10);
+  }
+  const rangeBins=Array.from({length:Nfast/2},(_,i)=>i*dR);
+
+  Plotly.react('plot-range-fft',[{x:rangeBins,y:Array.from(rangeFFT).slice(0,Nfast/2),mode:'lines',line:{color:'#60a5fa',width:2}}],
+    {...lo,title:{text:'Range FFT (1st chirp)',font:{size:13}},xaxis:{...lo.xaxis,title:'Range (m)'},yaxis:{...lo.yaxis,title:'Magnitude (dB)'},
+    annotations:[
+      {x:R1,y:Math.max(...rangeFFT),text:`T1: ${R1}m`,showarrow:true,arrowhead:2,arrowcolor:'#facc15',font:{color:'#facc15',size:10}},
+      {x:R2,y:-10,text:`T2: ${R2}m`,showarrow:true,arrowhead:2,arrowcolor:'#f472b6',font:{color:'#f472b6',size:10}}
+    ]
+  },{responsive:true});
+
+  // 2D FFT: Range-Doppler map
+  // First: range FFT for all chirps
+  const rdMap=[];
+  const rangeData=[]; // complex [Nc][Nfast/2]
+  for(let m=0;m<Nc;m++){
+    const row=[];
+    for(let k=0;k<Nfast/2;k++){
+      let re=0,im=0;
+      for(let n=0;n<Nfast;n++){
+        const a=-2*Math.PI*k*n/Nfast;
+        re+=beatMatrix[m][n]*win[n]*Math.cos(a);
+        im+=beatMatrix[m][n]*win[n]*Math.sin(a);
+      }
+      row.push({re,im});
+    }
+    rangeData.push(row);
+  }
+
+  // Doppler FFT for each range bin
+  const dopplerWin=Array.from({length:Nc},(_,i)=>0.5*(1-Math.cos(2*Math.PI*i/Nc)));
+  const rdMag=[];
+  for(let dop=0;dop<Nc;dop++){
+    const row=new Float64Array(Nfast/2);
+    for(let rBin=0;rBin<Nfast/2;rBin++){
+      let re=0,im=0;
+      for(let m=0;m<Nc;m++){
+        const a=-2*Math.PI*dop*m/Nc;
+        re+=rangeData[m][rBin].re*dopplerWin[m]*Math.cos(a)-rangeData[m][rBin].im*dopplerWin[m]*Math.sin(a);
+        im+=rangeData[m][rBin].re*dopplerWin[m]*Math.sin(a)+rangeData[m][rBin].im*dopplerWin[m]*Math.cos(a);
+      }
+      row[rBin]=20*Math.log10(Math.sqrt(re*re+im*im)/(Nfast*Nc)+1e-10);
+    }
+    rdMag.push(row);
+  }
+
+  // Rearrange doppler to [-vmax, vmax]
+  const rdMapArr=[];
+  const velAxis=[];
+  for(let d=0;d<Nc;d++){
+    const dShift=(d+Nc/2)%Nc;
+    rdMapArr.push(Array.from(rdMag[dShift]));
+    velAxis.push((d-Nc/2)*dv);
+  }
+
+  // Doppler FFT of range bin nearest T1
+  const rBin1=Math.round(R1/dR);
+  const dopSlice=rdMapArr.map(row=>row[Math.min(rBin1,Nfast/2-1)]);
+
+  Plotly.react('plot-doppler-fft',[{x:velAxis,y:dopSlice,mode:'lines',line:{color:'#f472b6',width:2}}],
+    {...lo,title:{text:`Doppler FFT at Range Bin ${rBin1} (R\u2248${R1}m)`,font:{size:13}},xaxis:{...lo.xaxis,title:'Velocity (m/s)'},yaxis:{...lo.yaxis,title:'Magnitude (dB)'},
+    annotations:[{x:V1,y:Math.max(...dopSlice),text:`v=${V1} m/s`,showarrow:true,arrowhead:2,arrowcolor:'#facc15',font:{color:'#facc15',size:10}}]
+  },{responsive:true});
+
+  // Plot 5: Range-Doppler map
+  const rdMax=Math.max(...rdMapArr.flat());
+  Plotly.react('plot-rd-map',[{
+    z:rdMapArr,type:'heatmap',x:rangeBins,y:velAxis,
+    colorscale:[[0,'#111827'],[0.3,'#1e3a5f'],[0.6,'#60a5fa'],[0.8,'#facc15'],[1,'#ef4444']],
+    zmin:rdMax-40,zmax:rdMax,
+    colorbar:{title:'dB',titlefont:{color:textColor},tickfont:{color:textColor}}
+  }],{...lo,title:{text:'Range-Doppler Map',font:{size:13}},xaxis:{...lo.xaxis,title:'Range (m)'},yaxis:{...lo.yaxis,title:'Velocity (m/s)'},
+    annotations:[
+      {x:R1,y:V1,text:'T1',showarrow:true,arrowcolor:'white',font:{color:'white',size:11}},
+      {x:R2,y:V2,text:'T2',showarrow:true,arrowcolor:'white',font:{color:'white',size:11}},
+    ]
+  },{responsive:true});
+
+  // Plot 6: Range and velocity cuts
+  // Range cut at T1 velocity
+  const vBin1=velAxis.reduce((best,v,i)=>Math.abs(v-V1)<Math.abs(velAxis[best]-V1)?i:best,0);
+  const rangeCut=rdMapArr[vBin1];
+  // Velocity cut at T1 range
+  const velCut=rdMapArr.map(row=>row[Math.min(rBin1,Nfast/2-1)]);
+
+  Plotly.react('plot-rd-cuts',[
+    {x:rangeBins,y:rangeCut,mode:'lines',line:{color:'#60a5fa',width:2},name:`Range cut (v\u2248${velAxis[vBin1].toFixed(1)} m/s)`},
+    {x:velAxis,y:velCut,mode:'lines',line:{color:'#f472b6',width:2},name:`Vel cut (R\u2248${R1} m)`,xaxis:'x2',yaxis:'y2'},
+  ],{...lo,
+    title:{text:'Range & Velocity Cuts',font:{size:13}},
+    xaxis:{...lo.xaxis,title:'Range (m)',domain:[0,0.45]},
+    yaxis:{...lo.yaxis,title:'dB'},
+    xaxis2:{...lo.xaxis,title:'Velocity (m/s)',domain:[0.55,1],anchor:'y2'},
+    yaxis2:{...lo.yaxis,title:'dB',anchor:'x2'},
+    legend:{x:0.3,y:1}
+  },{responsive:true});
+}
+
+['bw','tc','fc','nc','r1','v1','r2','v2','a2'].forEach(id=>document.getElementById(id).addEventListener('input',update));
+update();
+</script>
+</body>
+</html>

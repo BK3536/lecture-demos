@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+<link rel="stylesheet" href="../theme.css">
+<title>SAR Imaging</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="../theme.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Pretendard', 'Inter', system-ui, -apple-system, sans-serif; background: #111827; color: #d1d5db; }
+  .header { padding: 1.2rem 2rem; background: #1f2937; border-bottom: 1px solid #374151; }
+  .header h1 { font-size: 1.4rem; font-weight: 600; }
+  .header p { font-size: 0.85rem; color: #9ca3af; margin-top: 0.3rem; }
+  .container { display: grid; grid-template-columns: 280px 1fr; height: calc(100vh - 80px); }
+  .controls { padding: 1.2rem; background: #1f2937; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; }
+  .control-group { background: #111827; border-radius: 8px; padding: 1rem; }
+  .control-group h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 0.7rem; }
+  label { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin-bottom: 0.3rem; }
+  label span.val { color: #60a5fa; font-family: monospace; }
+  input[type=range] { width: 100%; accent-color: #60a5fa; margin-bottom: 0.5rem; }
+  select { width: 100%; padding: 0.4rem; background: #1f2937; color: #d1d5db; border: 1px solid #374151; border-radius: 6px; font-size: 0.85rem; margin-bottom: 0.5rem; }
+  .plots { padding: 1rem; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 0.5rem; }
+  .plot { background: #1f2937; border-radius: 8px; }
+  .info-box { background: #111827; border-radius: 8px; padding: 0.8rem 1rem; font-size: 0.8rem; line-height: 1.6; color: #9ca3af; }
+  .info-box code { color: #60a5fa; }
+  .metric { display: flex; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid #1f2937; font-size: 0.82rem; }
+  .metric:last-child { border-bottom: none; }
+  .metric .label { color: #9ca3af; }
+  .metric .value { color: #60a5fa; font-family: monospace; font-weight: 600; }
+  .btn { width: 100%; padding: 0.5rem; background: #60a5fa; color: #111827; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.85rem; }
+  .btn:hover { background: #7dd3fc; }
+  .checkbox-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; margin-bottom: 0.4rem; }
+  .checkbox-row input[type=checkbox] { accent-color: #60a5fa; width: 14px; height: 14px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <a class="back-link" href="../index.html" title="All demos">&larr;</a>
+  <div class="header-title">
+    <h1>SAR Imaging</h1>
+    <p>Cumming &amp; Wong &mdash; Synthetic Aperture Radar</p>
+  </div>
+  <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"></button>
+</div>
+<div class="container">
+  <div class="controls">
+    <div class="control-group">
+      <h3>Scene</h3>
+      <label>Point targets (3&times;3 grid) <span class="val" id="v-ntgt">3</span></label>
+      <input type="range" id="ntgt" min="1" max="9" step="1" value="3">
+      <label>Range spread (m) <span class="val" id="v-rspread">600</span></label>
+      <input type="range" id="rspread" min="100" max="1500" step="50" value="600">
+    </div>
+    <div class="control-group">
+      <h3>Platform &amp; Radar</h3>
+      <label>Platform velocity (m/s) <span class="val" id="v-vel">150</span></label>
+      <input type="range" id="vel" min="50" max="300" step="10" value="150">
+      <label>Chirp bandwidth (MHz) <span class="val" id="v-bw">80</span></label>
+      <input type="range" id="bw" min="10" max="200" step="5" value="80">
+      <label>Carrier frequency (GHz) <span class="val" id="v-fc">5.3</span></label>
+      <input type="range" id="fc" min="1" max="10" step="0.1" value="5.3">
+      <label>Antenna length (m) <span class="val" id="v-ant">3</span></label>
+      <input type="range" id="ant" min="0.5" max="10" step="0.5" value="3">
+      <label>Scene range R0 (km) <span class="val" id="v-r0">800</span></label>
+      <input type="range" id="r0" min="200" max="2000" step="50" value="800">
+    </div>
+    <div class="control-group">
+      <h3>Processing</h3>
+      <div class="checkbox-row"><input type="checkbox" id="do-rc" checked><label for="do-rc" style="margin:0">Range compression</label></div>
+      <div class="checkbox-row"><input type="checkbox" id="do-ac" checked><label for="do-ac" style="margin:0">Azimuth compression</label></div>
+    </div>
+    <div class="control-group">
+      <h3>Resolution</h3>
+      <div class="metric"><span class="label">Range res. &Delta;r</span><span class="value" id="m-dr">—</span></div>
+      <div class="metric"><span class="label">Azimuth res. &Delta;az</span><span class="value" id="m-daz">—</span></div>
+      <div class="metric"><span class="label">Synth. aperture</span><span class="value" id="m-lsa">—</span></div>
+      <div class="metric"><span class="label">SAR gain</span><span class="value" id="m-gain">—</span></div>
+    </div>
+    <div class="info-box">
+      <strong>SAR Resolution</strong><br>
+      <code>&Delta;r = c / (2B)</code> &mdash; range<br>
+      <code>&Delta;az = D / 2</code> &mdash; azimuth (real aperture)<br>
+      <code>&Delta;az = &lambda;R / (2L<sub>sa</sub>)</code> &mdash; SAR focused<br><br>
+      Raw phase: <code>&phi; = 4&pi;R(&eta;)/&lambda;</code><br>
+      where <code>R(&eta;) = &radic;(R0&sup2; + (v&eta;)&sup2;)</code><br><br>
+      SAR gain: <code>L<sub>sa</sub>/D</code> &mdash; coherent integration over synthetic aperture
+    </div>
+  </div>
+  <div class="plots">
+    <div class="plot" id="plot-raw"></div>
+    <div class="plot" id="plot-rc"></div>
+    <div class="plot" id="plot-focused"></div>
+    <div class="plot" id="plot-psf"></div>
+  </div>
+</div>
+<script>
+var _t=THEMES[curTheme];var plotBg=_t.plotBg,paperBg=_t.paperBg,gridColor=_t.gridColor,textColor=_t.textColor;
+var lo={paper_bgcolor:paperBg,plot_bgcolor:plotBg,font:{color:textColor,size:11},margin:{t:40,r:16,b:40,l:50},xaxis:{gridcolor:gridColor,zerolinecolor:_t.zeroLine},yaxis:{gridcolor:gridColor,zerolinecolor:_t.zeroLine}};
+
+const c = 3e8;
+const NR = 128;  // range samples
+const NA = 256;  // azimuth (slow time) samples
+
+function linspace(a, b, n) {
+  const arr = [];
+  for (let i = 0; i < n; i++) arr.push(a + (b - a) * i / (n - 1));
+  return arr;
+}
+
+function fft(re, im) {
+  // Cooley-Tukey radix-2 FFT in-place
+  const n = re.length;
+  if (n <= 1) return;
+  // bit-reverse permutation
+  let j = 0;
+  for (let i = 1; i < n; i++) {
+    let bit = n >> 1;
+    for (; j & bit; bit >>= 1) j ^= bit;
+    j ^= bit;
+    if (i < j) {
+      [re[i], re[j]] = [re[j], re[i]];
+      [im[i], im[j]] = [im[j], im[i]];
+    }
+  }
+  for (let len = 2; len <= n; len <<= 1) {
+    const ang = -2 * Math.PI / len;
+    const wre = Math.cos(ang), wim = Math.sin(ang);
+    for (let i = 0; i < n; i += len) {
+      let cur_re = 1, cur_im = 0;
+      for (let k = 0; k < len / 2; k++) {
+        const u_re = re[i + k], u_im = im[i + k];
+        const v_re = re[i + k + len/2] * cur_re - im[i + k + len/2] * cur_im;
+        const v_im = re[i + k + len/2] * cur_im + im[i + k + len/2] * cur_re;
+        re[i + k] = u_re + v_re; im[i + k] = u_im + v_im;
+        re[i + k + len/2] = u_re - v_re; im[i + k + len/2] = u_im - v_im;
+        const new_re = cur_re * wre - cur_im * wim;
+        cur_im = cur_re * wim + cur_im * wre;
+        cur_re = new_re;
+      }
+    }
+  }
+}
+
+function ifft(re, im) {
+  // IFFT = conjugate, FFT, conjugate, divide by N
+  for (let i = 0; i < im.length; i++) im[i] = -im[i];
+  fft(re, im);
+  for (let i = 0; i < im.length; i++) { im[i] = -im[i] / re.length; re[i] /= re.length; }
+}
+
+function fftshift1d(arr) {
+  const n = arr.length, h = Math.floor(n / 2);
+  return arr.slice(h).concat(arr.slice(0, h));
+}
+
+function makeHeatmap(data2d) {
+  // data2d[azimuth][range] -> compute magnitude
+  const rows = data2d.length, cols = data2d[0].re.length;
+  const z = [];
+  for (let a = 0; a < rows; a++) {
+    const row = [];
+    for (let r = 0; r < cols; r++) {
+      const mag = Math.sqrt(data2d[a].re[r] ** 2 + data2d[a].im[r] ** 2);
+      row.push(20 * Math.log10(Math.max(mag, 1e-10)));
+    }
+    z.push(row);
+  }
+  return z;
+}
+
+function update() {
+  const nTgt = +document.getElementById('ntgt').value;
+  const rspread = +document.getElementById('rspread').value;
+  const vel = +document.getElementById('vel').value;
+  const bwMHz = +document.getElementById('bw').value;
+  const fcGHz = +document.getElementById('fc').value;
+  const antLen = +document.getElementById('ant').value;
+  const r0km = +document.getElementById('r0').value;
+  const doRC = document.getElementById('do-rc').checked;
+  const doAC = document.getElementById('do-ac').checked;
+
+  document.getElementById('v-ntgt').textContent = nTgt;
+  document.getElementById('v-rspread').textContent = rspread;
+  document.getElementById('v-vel').textContent = vel;
+  document.getElementById('v-bw').textContent = bwMHz;
+  document.getElementById('v-fc').textContent = fcGHz.toFixed(1);
+  document.getElementById('v-ant').textContent = antLen;
+  document.getElementById('v-r0').textContent = r0km;
+
+  const B = bwMHz * 1e6;
+  const fc = fcGHz * 1e9;
+  const lambda = c / fc;
+  const R0 = r0km * 1e3;
+
+  // Resolutions
+  const deltaR = c / (2 * B);
+  const Lsa = lambda * R0 / antLen;  // synthetic aperture length
+  const deltaAz = antLen / 2;         // real aperture at SAR focus = D/2
+  const sarGain = Lsa / antLen;
+
+  document.getElementById('m-dr').textContent = deltaR.toFixed(2) + ' m';
+  document.getElementById('m-daz').textContent = deltaAz.toFixed(2) + ' m';
+  document.getElementById('m-lsa').textContent = Lsa.toFixed(0) + ' m';
+  document.getElementById('m-gain').textContent = sarGain.toFixed(0) + 'x';
+
+  // Place point targets
+  const targets = [];
+  const nSide = Math.ceil(Math.sqrt(nTgt));
+  let count = 0;
+  for (let ri = 0; ri < nSide && count < nTgt; ri++) {
+    for (let ai = 0; ai < nSide && count < nTgt; ai++) {
+      const rOff = (ri - (nSide - 1) / 2) * rspread / nSide;
+      const aOff = (ai - (nSide - 1) / 2) * rspread / nSide;
+      targets.push({ r: R0 + rOff, az: aOff });
+      count++;
+    }
+  }
+
+  // SAR geometry
+  const azExtent = 1.5 * Lsa;
+  const eta = linspace(-azExtent / (2 * vel), azExtent / (2 * vel), NA); // slow time
+  const azPos = eta.map(t => t * vel); // platform azimuth position
+
+  // Range axis: scene extent ± some margin
+  const rMin = R0 - rspread * 0.8;
+  const rMax = R0 + rspread * 0.8;
+  const rAxis = linspace(rMin, rMax, NR);
+  const rSpacingM = (rMax - rMin) / (NR - 1);
+
+  // Build raw SAR signal: complex phase history [NA x NR]
+  const rawRe = [], rawIm = [];
+  for (let ia = 0; ia < NA; ia++) {
+    const re = new Array(NR).fill(0);
+    const im = new Array(NR).fill(0);
+    for (const tgt of targets) {
+      const dist = Math.sqrt((tgt.r) ** 2 + (azPos[ia] - tgt.az) ** 2);
+      // Range gate of this target
+      const tDelay = 2 * dist / c;
+      const rSample = (dist - rMin) / rSpacingM;
+      if (rSample < 0 || rSample >= NR - 1) continue;
+
+      // Sinc-like range envelope (simulate chirp return)
+      for (let ir = 0; ir < NR; ir++) {
+        const rDiff = (rAxis[ir] - dist) / deltaR;
+        const envelope = Math.abs(rDiff) < 3 ? Math.sin(Math.PI * rDiff + 1e-10) / (Math.PI * rDiff + 1e-10) : 0;
+        // Phase: 4pi*R/lambda
+        const phase = -4 * Math.PI * dist / lambda;
+        re[ir] += envelope * Math.cos(phase);
+        im[ir] += envelope * Math.sin(phase);
+      }
+    }
+    rawRe.push(re);
+    rawIm.push(im);
+  }
+
+  // Compute raw image magnitude
+  const rawMag = rawRe.map((re, ia) => {
+    return re.map((v, ir) => {
+      const mag = Math.sqrt(v ** 2 + rawIm[ia][ir] ** 2);
+      return 20 * Math.log10(Math.max(mag, 1e-10));
+    });
+  });
+
+  // Range compression: matched filter in range frequency domain
+  const rcRe = rawRe.map(row => [...row]);
+  const rcIm = rawIm.map(row => [...row]);
+
+  if (doRC) {
+    // Chirp matched filter in freq domain for each azimuth line
+    for (let ia = 0; ia < NA; ia++) {
+      const re = rcRe[ia], im = rcIm[ia];
+      fft(re, im);
+      // Matched filter = conjugate of chirp spectrum (for range compression, apply freq domain multiply)
+      // Here we just do amplitude weighting (Hanning) to simulate pulse compression
+      const N = re.length;
+      for (let k = 0; k < N; k++) {
+        const hann = 0.5 - 0.5 * Math.cos(2 * Math.PI * k / (N - 1));
+        re[k] *= hann; im[k] *= hann;
+      }
+      ifft(re, im);
+    }
+  }
+
+  const rcMag = rcRe.map((re, ia) => {
+    return re.map((v, ir) => {
+      const mag = Math.sqrt(v ** 2 + rcIm[ia][ir] ** 2);
+      return 20 * Math.log10(Math.max(mag, 1e-10));
+    });
+  });
+
+  // Azimuth compression: matched filter in azimuth frequency domain
+  const focRe = rcRe.map(row => [...row]);
+  const focIm = rcIm.map(row => [...row]);
+
+  if (doRC && doAC) {
+    // For each range bin, apply azimuth matched filter
+    for (let ir = 0; ir < NR; ir++) {
+      const re = new Array(NA), im = new Array(NA);
+      for (let ia = 0; ia < NA; ia++) { re[ia] = focRe[ia][ir]; im[ia] = focIm[ia][ir]; }
+      fft(re, im);
+      // Azimuth matched filter: remove quadratic phase (range migration correction simplified)
+      // Azimuth FM rate: ka = 2*v^2 / (lambda * R0)
+      const ka = 2 * vel ** 2 / (lambda * R0);
+      const fa = linspace(-NA / (2 * azExtent / vel), NA / (2 * azExtent / vel), NA);
+      for (let ia = 0; ia < NA; ia++) {
+        // Phase of reference function (MF)
+        const faDop = (ia < NA / 2 ? ia : ia - NA) / (azExtent / vel);
+        const phase = Math.PI * faDop ** 2 / ka;
+        const mfRe = Math.cos(phase), mfIm = Math.sin(phase);
+        const newRe = re[ia] * mfRe - im[ia] * mfIm;
+        const newIm = re[ia] * mfIm + im[ia] * mfRe;
+        re[ia] = newRe; im[ia] = newIm;
+      }
+      ifft(re, im);
+      for (let ia = 0; ia < NA; ia++) { focRe[ia][ir] = re[ia]; focIm[ia][ir] = im[ia]; }
+    }
+  }
+
+  const focMag = focRe.map((re, ia) => {
+    return re.map((v, ir) => {
+      const mag = Math.sqrt(v ** 2 + focIm[ia][ir] ** 2);
+      return 20 * Math.log10(Math.max(mag, 1e-10));
+    });
+  });
+
+  // PSF: extract center target region
+  const cTgt = targets[Math.floor(targets.length / 2)];
+  const cRbin = Math.round((cTgt.r - rMin) / rSpacingM);
+  const cAbin = Math.floor(NA / 2);
+  const psfHW = 20;
+  const psfRe = [], psfIm = [];
+  for (let ia = cAbin - psfHW; ia <= cAbin + psfHW; ia++) {
+    const row = [];
+    for (let ir = cRbin - psfHW; ir <= cRbin + psfHW; ir++) {
+      const v_re = (ia >= 0 && ia < NA && ir >= 0 && ir < NR) ? focRe[ia][ir] : 0;
+      const v_im = (ia >= 0 && ia < NA && ir >= 0 && ir < NR) ? focIm[ia][ir] : 0;
+      row.push(20 * Math.log10(Math.sqrt(v_re ** 2 + v_im ** 2) + 1e-10));
+    }
+    psfRe.push(row);
+  }
+
+  const azLabels = linspace(-azExtent / 2, azExtent / 2, NA).map(v => v.toFixed(0));
+  const rLabels = rAxis.map(v => ((v - R0) / 1000).toFixed(2));
+
+  const heatLayout = (title) => ({
+    ...lo,
+    title: { text: title, font: { size: 13 } },
+    xaxis: { ...lo.xaxis, title: 'Range offset (km)', tickvals: [0, NR/4, NR/2, 3*NR/4, NR-1], ticktext: [rLabels[0], rLabels[Math.floor(NR/4)], rLabels[Math.floor(NR/2)], rLabels[Math.floor(3*NR/4)], rLabels[NR-1]] },
+    yaxis: { ...lo.yaxis, title: 'Azimuth (m)', tickvals: [0, NA/4, NA/2, 3*NA/4, NA-1], ticktext: [azLabels[0], azLabels[Math.floor(NA/4)], azLabels[Math.floor(NA/2)], azLabels[Math.floor(3*NA/4)], azLabels[NA-1]] }
+  });
+
+  const colorscale = [[0,'#111827'],[0.3,'#1e3a5f'],[0.6,'#2563eb'],[0.85,'#60a5fa'],[1,'#ffffff']];
+
+  Plotly.react('plot-raw', [{
+    z: rawMag, type: 'heatmap', colorscale, showscale: false,
+    zmin: -40, zmax: 0, hovertemplate: 'Az %{y}<br>R %{x}<br>%{z:.1f} dB'
+  }], heatLayout('Raw SAR Data (Phase History)'), { responsive: true });
+
+  Plotly.react('plot-rc', [{
+    z: rcMag, type: 'heatmap', colorscale, showscale: false,
+    zmin: -40, zmax: 0, hovertemplate: 'Az %{y}<br>R %{x}<br>%{z:.1f} dB'
+  }], heatLayout(doRC ? 'After Range Compression' : 'Raw (RC disabled)'), { responsive: true });
+
+  Plotly.react('plot-focused', [{
+    z: focMag, type: 'heatmap', colorscale, showscale: false,
+    zmin: -40, zmax: 0, hovertemplate: 'Az %{y}<br>R %{x}<br>%{z:.1f} dB'
+  }], { ...heatLayout((doRC && doAC) ? 'Focused SAR Image' : 'Partially processed'), annotations: [] }, { responsive: true });
+
+  const psfW = psfHW * 2 + 1;
+  Plotly.react('plot-psf', [{
+    z: psfRe, type: 'heatmap', colorscale, showscale: false,
+    zmin: -30, zmax: 0
+  }], {
+    ...lo,
+    title: { text: `PSF &mdash; &Delta;r=${deltaR.toFixed(1)}m, &Delta;az=${deltaAz.toFixed(1)}m`, font: { size: 13 } },
+    xaxis: { ...lo.xaxis, title: 'Range (samples)' },
+    yaxis: { ...lo.yaxis, title: 'Azimuth (samples)' },
+    shapes: [{
+      type: 'circle', xref: 'x', yref: 'y',
+      x0: psfHW - 3, y0: psfHW - 3, x1: psfHW + 3, y1: psfHW + 3,
+      line: { color: '#facc15', width: 1.5, dash: 'dot' }
+    }]
+  }, { responsive: true });
+}
+
+['ntgt','rspread','vel','bw','fc','ant','r0'].forEach(id => document.getElementById(id).addEventListener('input', update));
+['do-rc','do-ac'].forEach(id => document.getElementById(id).addEventListener('change', update));
+update();
+</script>
+</body>
+</html>

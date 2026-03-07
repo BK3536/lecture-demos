@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+<link rel="stylesheet" href="../theme.css">
+<title>Fourier Transform & Filtering</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="../theme.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Pretendard', 'Inter', system-ui, -apple-system, sans-serif; background: #111827; color: #d1d5db; }
+  .header { padding: 1.2rem 2rem; background: #1f2937; border-bottom: 1px solid #374151; }
+  .header h1 { font-size: 1.4rem; font-weight: 600; }
+  .header p { font-size: 0.85rem; color: #9ca3af; margin-top: 0.3rem; }
+  .container { display: grid; grid-template-columns: 300px 1fr; height: calc(100vh - 80px); }
+  .controls { padding: 1.2rem; background: #1f2937; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; }
+  .control-group { background: #111827; border-radius: 8px; padding: 1rem; }
+  .control-group h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 0.7rem; }
+  label { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin-bottom: 0.3rem; }
+  label span.val { color: #60a5fa; font-family: monospace; }
+  input[type=range] { width: 100%; accent-color: #60a5fa; margin-bottom: 0.5rem; }
+  select { width: 100%; padding: 0.4rem; background: #1f2937; color: #d1d5db; border: 1px solid #374151; border-radius: 6px; font-size: 0.85rem; margin-bottom: 0.5rem; }
+  .plots { padding: 1rem; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr 1fr; gap: 0.5rem; }
+  .plot { background: #1f2937; border-radius: 8px; }
+  .info-box { background: #111827; border-radius: 8px; padding: 0.8rem 1rem; font-size: 0.8rem; line-height: 1.6; color: #9ca3af; }
+  .info-box code { color: #60a5fa; }
+</style>
+</head>
+<body>
+<div class="header">
+  <a class="back-link" href="../index.html" title="All demos">&larr;</a>
+  <div class="header-title">
+    <h1>Fourier Transform & Filtering</h1>
+    <p>Oppenheim & Willsky, Ch. 4 & 6 — CTFT and Frequency-Domain Analysis of LTI Systems</p>
+  </div>
+  <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"></button>
+</div>
+<div class="container">
+  <div class="controls">
+    <div class="control-group">
+      <h3>Input Signal</h3>
+      <select id="signal">
+        <option value="multi">Multi-tone (50+200+450 Hz)</option>
+        <option value="chirp">Chirp (50~500 Hz)</option>
+        <option value="square">Square wave (80 Hz)</option>
+        <option value="noisy-sine">Noisy Sine (100 Hz)</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <h3>Filter</h3>
+      <select id="ftype">
+        <option value="lowpass">Low-pass</option>
+        <option value="highpass">High-pass</option>
+        <option value="bandpass">Band-pass</option>
+      </select>
+      <label>Cutoff / Center (Hz) <span class="val" id="v-fc">150</span></label>
+      <input type="range" id="fc" min="20" max="480" step="5" value="150">
+      <label>Filter Order <span class="val" id="v-order">4</span></label>
+      <input type="range" id="order" min="1" max="10" step="1" value="4">
+      <label id="bw-label" style="display:none">Bandwidth (Hz) <span class="val" id="v-bw">100</span></label>
+      <input type="range" id="bw" min="20" max="300" step="10" value="100" style="display:none">
+    </div>
+    <div class="info-box">
+      <strong>Key Concept</strong><br>
+      <code>Y(j&omega;) = H(j&omega;) &middot; X(j&omega;)</code><br><br>
+      Filtering = multiplication in frequency domain.<br>
+      The filter's frequency response H(j&omega;) shapes the input spectrum X(j&omega;) to produce the output Y(j&omega;).
+    </div>
+  </div>
+  <div class="plots">
+    <div class="plot" id="plot-xt"></div>
+    <div class="plot" id="plot-Xf"></div>
+    <div class="plot" id="plot-ht"></div>
+    <div class="plot" id="plot-Hf"></div>
+    <div class="plot" id="plot-yt"></div>
+    <div class="plot" id="plot-Yf"></div>
+  </div>
+</div>
+<script>
+var _t=THEMES[curTheme];var plotBg=_t.plotBg,paperBg=_t.paperBg,gridColor=_t.gridColor,textColor=_t.textColor;
+var lo={paper_bgcolor:paperBg,plot_bgcolor:plotBg,font:{color:textColor,size:11},margin:{t:36,r:16,b:36,l:50},xaxis:{gridcolor:gridColor,zerolinecolor:_t.zeroLine},yaxis:{gridcolor:gridColor,zerolinecolor:_t.zeroLine}};
+
+const FS = 2000, N = 2048, T = N / FS;
+const t = Array.from({length:N},(_,i)=>i/FS);
+const freqs = Array.from({length:N/2},(_,i)=>i*FS/N);
+
+function generateSignal(type) {
+  switch(type) {
+    case 'multi': return t.map(v => 0.7*Math.sin(2*Math.PI*50*v) + 1.0*Math.sin(2*Math.PI*200*v) + 0.5*Math.sin(2*Math.PI*450*v));
+    case 'chirp': return t.map(v => Math.sin(2*Math.PI*(50*v + 225*v*v)));
+    case 'square': { const f=80; return t.map(v => Math.sign(Math.sin(2*Math.PI*f*v))); }
+    case 'noisy-sine': return t.map(v => Math.sin(2*Math.PI*100*v) + 0.5*(Math.random()-0.5));
+  }
+}
+
+function fft(x) {
+  const n = x.length;
+  if (n <= 1) return x.map(v => [v, 0]);
+  if (n & (n-1)) { // not power of 2, use DFT
+    const X = [];
+    for (let k = 0; k < n; k++) {
+      let re = 0, im = 0;
+      for (let j = 0; j < n; j++) {
+        const ang = -2*Math.PI*k*j/n;
+        re += x[j]*Math.cos(ang);
+        im += x[j]*Math.sin(ang);
+      }
+      X.push([re, im]);
+    }
+    return X;
+  }
+  const even = fft(x.filter((_,i)=>i%2===0));
+  const odd = fft(x.filter((_,i)=>i%2===1));
+  const X = new Array(n);
+  for (let k = 0; k < n/2; k++) {
+    const ang = -2*Math.PI*k/n;
+    const tre = Math.cos(ang)*odd[k][0] - Math.sin(ang)*odd[k][1];
+    const tim = Math.cos(ang)*odd[k][1] + Math.sin(ang)*odd[k][0];
+    X[k] = [even[k][0]+tre, even[k][1]+tim];
+    X[k+n/2] = [even[k][0]-tre, even[k][1]-tim];
+  }
+  return X;
+}
+
+function ifft(X) {
+  const n = X.length;
+  const conj = X.map(([r,i])=>[r,-i]);
+  const flat = conj.map(c=>c[0]);
+  // use fft on conjugated real parts won't work generally; do direct IDFT for small N
+  // Actually let's use proper IDFT
+  const x = [];
+  for (let j = 0; j < n; j++) {
+    let re = 0;
+    for (let k = 0; k < n; k++) {
+      const ang = 2*Math.PI*k*j/n;
+      re += X[k][0]*Math.cos(ang) - X[k][1]*Math.sin(ang);
+    }
+    x.push(re/n);
+  }
+  return x;
+}
+
+function magnitude(X) { return X.map(([r,i])=>Math.sqrt(r*r+i*i)); }
+
+// Butterworth filter frequency response
+function butterworthH(freq, fc, order, type, bw) {
+  const Hmag = [];
+  for (let i = 0; i < freq.length; i++) {
+    const f = freq[i];
+    let ratio;
+    if (type === 'lowpass') {
+      ratio = f / fc;
+      Hmag.push(1 / Math.sqrt(1 + Math.pow(ratio, 2*order)));
+    } else if (type === 'highpass') {
+      if (f === 0) { Hmag.push(0); continue; }
+      ratio = fc / f;
+      Hmag.push(1 / Math.sqrt(1 + Math.pow(ratio, 2*order)));
+    } else { // bandpass
+      const fL = Math.max(fc - bw/2, 1), fH = fc + bw/2;
+      const fC = Math.sqrt(fL * fH);
+      const BW = fH - fL;
+      if (f === 0) { Hmag.push(0); continue; }
+      const s = (f*f - fC*fC) / (f * BW);
+      Hmag.push(1 / Math.sqrt(1 + Math.pow(s, 2*order)));
+    }
+  }
+  return Hmag;
+}
+
+function butterworthImpulse(fc, order, type, bw) {
+  // Build frequency-domain filter and IFFT
+  const Hfull = [];
+  for (let k = 0; k < N; k++) {
+    const f = k < N/2 ? k*FS/N : (k-N)*FS/N;
+    const af = Math.abs(f);
+    let hm;
+    if (type === 'lowpass') {
+      hm = 1/Math.sqrt(1+Math.pow(af/fc, 2*order));
+    } else if (type === 'highpass') {
+      hm = af===0 ? 0 : 1/Math.sqrt(1+Math.pow(fc/af, 2*order));
+    } else {
+      const fL = Math.max(fc-bw/2,1), fH = fc+bw/2, fC = Math.sqrt(fL*fH), BW = fH-fL;
+      if (af===0) { hm=0; } else { const s=(af*af-fC*fC)/(af*BW); hm=1/Math.sqrt(1+Math.pow(s,2*order)); }
+    }
+    Hfull.push([hm, 0]);
+  }
+  return { Hfull, impulse: ifft(Hfull) };
+}
+
+function update() {
+  const sigType = document.getElementById('signal').value;
+  const ftype = document.getElementById('ftype').value;
+  const fc = +document.getElementById('fc').value;
+  const order = +document.getElementById('order').value;
+  const bw = +document.getElementById('bw').value;
+
+  document.getElementById('v-fc').textContent = fc;
+  document.getElementById('v-order').textContent = order;
+  document.getElementById('v-bw').textContent = bw;
+
+  const isBP = ftype === 'bandpass';
+  document.getElementById('bw-label').style.display = isBP ? 'flex' : 'none';
+  document.getElementById('bw').style.display = isBP ? 'block' : 'none';
+
+  // Generate input
+  const x = generateSignal(sigType);
+  const X = fft(x);
+  const Xmag = magnitude(X).slice(0, N/2).map(v => 2*v/N);
+
+  // Filter
+  const Hmag = butterworthH(freqs, fc, order, ftype, bw);
+  const { Hfull, impulse: ht } = butterworthImpulse(fc, order, ftype, bw);
+
+  // Apply filter in freq domain: Y = H * X
+  const Y = X.map(([r,i], k) => [r*Hfull[k][0], i*Hfull[k][0]]);
+  const y = ifft(Y);
+  const Ymag = magnitude(Y).slice(0, N/2).map(v => 2*v/N);
+
+  // Limit time display
+  const tShow = 0.05; // 50ms
+  const nShow = Math.min(Math.floor(tShow * FS), N);
+  const tSlice = t.slice(0, nShow), xSlice = x.slice(0, nShow), ySlice = y.slice(0, nShow);
+  const htSlice = ht.slice(0, Math.min(200, N));
+  const htT = Array.from({length:htSlice.length},(_,i)=>i/FS);
+
+  // Row 1: Input
+  Plotly.react('plot-xt', [{x:tSlice,y:xSlice,mode:'lines',line:{color:'#60a5fa',width:1.5}}],
+    {...lo,title:{text:'Input x(t)',font:{size:13}},xaxis:{...lo.xaxis,title:'Time (s)'},yaxis:{...lo.yaxis,title:'Amplitude'}},{responsive:true});
+
+  Plotly.react('plot-Xf', [{x:freqs,y:Xmag,mode:'lines',line:{color:'#60a5fa',width:1.5}}],
+    {...lo,title:{text:'Input Spectrum |X(f)|',font:{size:13}},xaxis:{...lo.xaxis,title:'Frequency (Hz)',range:[0,FS/2]},yaxis:{...lo.yaxis,title:'Magnitude'}},{responsive:true});
+
+  // Row 2: Filter
+  Plotly.react('plot-ht', [{x:htT,y:htSlice,mode:'lines',line:{color:'#facc15',width:2}}],
+    {...lo,title:{text:'Impulse Response h(t)',font:{size:13}},xaxis:{...lo.xaxis,title:'Time (s)'},yaxis:{...lo.yaxis,title:'Amplitude'}},{responsive:true});
+
+  // Filter response with shaded passband
+  const HdB = Hmag.map(v => 20*Math.log10(Math.max(v, 1e-10)));
+  Plotly.react('plot-Hf', [
+    {x:freqs,y:HdB,mode:'lines',line:{color:'#facc15',width:2.5},name:'|H(f)|'},
+  ], {...lo,title:{text:'Filter |H(f)| (dB)',font:{size:13}},xaxis:{...lo.xaxis,title:'Frequency (Hz)',range:[0,FS/2]},yaxis:{...lo.yaxis,title:'Magnitude (dB)',range:[-60,5]},
+    shapes:[{type:'line',x0:fc,x1:fc,y0:-60,y1:5,line:{color:'#ef4444',width:1,dash:'dash'}}],
+    annotations:[{x:fc,y:2,text:`f_c=${fc}`,showarrow:false,font:{color:'#ef4444',size:10},yshift:10}]
+  },{responsive:true});
+
+  // Row 3: Output
+  Plotly.react('plot-yt', [{x:tSlice,y:ySlice,mode:'lines',line:{color:'#4ade80',width:1.5}}],
+    {...lo,title:{text:'Output y(t) = x(t) * h(t)',font:{size:13}},xaxis:{...lo.xaxis,title:'Time (s)'},yaxis:{...lo.yaxis,title:'Amplitude'}},{responsive:true});
+
+  Plotly.react('plot-Yf', [
+    {x:freqs,y:Xmag,mode:'lines',line:{color:'#60a5fa',width:1,dash:'dot'},name:'|X(f)|',opacity:0.5},
+    {x:freqs,y:Ymag,mode:'lines',line:{color:'#4ade80',width:2},name:'|Y(f)|'},
+  ], {...lo,title:{text:'Output Spectrum |Y(f)| = |H(f)||X(f)|',font:{size:13}},xaxis:{...lo.xaxis,title:'Frequency (Hz)',range:[0,FS/2]},yaxis:{...lo.yaxis,title:'Magnitude'},legend:{x:0.7,y:1}},{responsive:true});
+}
+
+['signal','ftype'].forEach(id=>document.getElementById(id).addEventListener('change',update));
+['fc','order','bw'].forEach(id=>document.getElementById(id).addEventListener('input',update));
+update();
+</script>
+</body>
+</html>

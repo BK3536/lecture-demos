@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+<link rel="stylesheet" href="../theme.css">
+<title>Fourier Series</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="../theme.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Pretendard', 'Inter', system-ui, -apple-system, sans-serif; background: #111827; color: #d1d5db; }
+  .header { padding: 1.2rem 2rem; background: #1f2937; border-bottom: 1px solid #374151; }
+  .header h1 { font-size: 1.4rem; font-weight: 600; }
+  .header p { font-size: 0.85rem; color: #9ca3af; margin-top: 0.3rem; }
+  .container { display: grid; grid-template-columns: 300px 1fr; height: calc(100vh - 80px); }
+  .controls { padding: 1.2rem; background: #1f2937; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; }
+  .control-group { background: #111827; border-radius: 8px; padding: 1rem; }
+  .control-group h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 0.7rem; }
+  label { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin-bottom: 0.3rem; }
+  label span.val { color: #60a5fa; font-family: monospace; }
+  input[type=range] { width: 100%; accent-color: #60a5fa; margin-bottom: 0.5rem; }
+  select { width: 100%; padding: 0.4rem; background: #1f2937; color: #d1d5db; border: 1px solid #374151; border-radius: 6px; font-size: 0.85rem; margin-bottom: 0.5rem; }
+  .plots { padding: 1rem; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 0.5rem; }
+  .plot { background: #1f2937; border-radius: 8px; }
+  .info-box { background: #111827; border-radius: 8px; padding: 0.8rem 1rem; font-size: 0.8rem; line-height: 1.6; color: #9ca3af; }
+  .info-box code { color: #60a5fa; }
+  .play-btn { width: 100%; padding: 0.5rem; background: #60a5fa; color: #111827; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.85rem; }
+  .play-btn:hover { background: #7dd3fc; }
+</style>
+</head>
+<body>
+<div class="header">
+  <a class="back-link" href="../index.html" title="All demos">&larr;</a>
+  <div class="header-title">
+    <h1>Fourier Series</h1>
+    <p>Oppenheim & Willsky, Ch. 3 — Fourier Series Representation of Periodic Signals</p>
+  </div>
+  <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"></button>
+</div>
+<div class="container">
+  <div class="controls">
+    <div class="control-group">
+      <h3>Waveform</h3>
+      <select id="waveform">
+        <option value="square">Square Wave</option>
+        <option value="sawtooth">Sawtooth Wave</option>
+        <option value="triangle">Triangle Wave</option>
+        <option value="rectpulse">Rectangular Pulse (duty 25%)</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <h3>Parameters</h3>
+      <label>Number of Harmonics <span class="val" id="v-N">1</span></label>
+      <input type="range" id="N" min="1" max="50" step="1" value="1">
+      <label>Fundamental Freq f<sub>0</sub> (Hz) <span class="val" id="v-f0">2</span></label>
+      <input type="range" id="f0" min="1" max="10" step="1" value="2">
+    </div>
+    <div class="control-group">
+      <h3>Animation</h3>
+      <button class="play-btn" id="play-btn" onclick="togglePlay()">&#9654; Sweep Harmonics</button>
+    </div>
+    <div class="info-box">
+      <strong>Fourier Series</strong><br>
+      <code>x(t) = a<sub>0</sub> + &Sigma; a<sub>n</sub>cos(n&omega;<sub>0</sub>t) + b<sub>n</sub>sin(n&omega;<sub>0</sub>t)</code><br><br>
+      <strong>Gibbs Phenomenon:</strong> ~9% overshoot at discontinuities persists no matter how many terms. It never goes away — only gets narrower.
+    </div>
+  </div>
+  <div class="plots">
+    <div class="plot" id="plot-approx"></div>
+    <div class="plot" id="plot-coeffs"></div>
+    <div class="plot" id="plot-components"></div>
+    <div class="plot" id="plot-error"></div>
+  </div>
+</div>
+<script>
+var _t=THEMES[curTheme];var plotBg=_t.plotBg,paperBg=_t.paperBg,gridColor=_t.gridColor,textColor=_t.textColor;
+var lo = { paper_bgcolor: paperBg, plot_bgcolor: plotBg, font: { color: textColor, size: 11 }, margin: { t: 40, r: 20, b: 40, l: 50 }, xaxis: { gridcolor: gridColor, zerolinecolor:_t.zeroLine }, yaxis: { gridcolor: gridColor, zerolinecolor:_t.zeroLine } };
+
+function linspace(a, b, n) { const d = (b - a) / (n - 1); return Array.from({ length: n }, (_, i) => a + i * d); }
+
+// Exact waveforms (periodic, period T=1/f0)
+function exactWave(type, t, T) {
+  const phase = ((t % T) + T) % T; // [0, T)
+  const norm = phase / T; // [0, 1)
+  switch (type) {
+    case 'square': return norm < 0.5 ? 1 : -1;
+    case 'sawtooth': return 2 * norm - 1;
+    case 'triangle': return norm < 0.5 ? 4 * norm - 1 : 3 - 4 * norm;
+    case 'rectpulse': return norm < 0.25 ? 1 : 0;
+  }
+}
+
+// Fourier coefficients (a_n, b_n) for each waveform
+function getCoeffs(type, n) {
+  if (n === 0) {
+    if (type === 'rectpulse') return { a: 0.25, b: 0 };
+    return { a: 0, b: 0 };
+  }
+  switch (type) {
+    case 'square':
+      return { a: 0, b: (n % 2 === 1) ? 4 / (Math.PI * n) : 0 };
+    case 'sawtooth':
+      return { a: 0, b: -2 * Math.pow(-1, n) / (Math.PI * n) };
+    case 'triangle':
+      return { a: (n % 2 === 1) ? -8 / (Math.PI * Math.PI * n * n) : 0, b: 0 };
+    case 'rectpulse':
+      return { a: 2 * Math.sin(n * Math.PI * 0.25) / (n * Math.PI), b: 0 };
+  }
+}
+
+let playing = false, animId = null;
+
+function update() {
+  const Nharm = +document.getElementById('N').value;
+  const f0 = +document.getElementById('f0').value;
+  const type = document.getElementById('waveform').value;
+  document.getElementById('v-N').textContent = Nharm;
+  document.getElementById('v-f0').textContent = f0;
+
+  const T = 1 / f0;
+  const duration = 3 * T;
+  const nPts = 2000;
+  const t = linspace(-duration / 2, duration / 2, nPts);
+  const w0 = 2 * Math.PI * f0;
+
+  // Exact signal
+  const exact = t.map(v => exactWave(type, v, T));
+
+  // Build Fourier approximation and collect individual components
+  const approx = new Float64Array(nPts);
+  const a0 = getCoeffs(type, 0).a;
+  approx.fill(a0);
+
+  const componentTraces = [];
+  const harmonicNums = [], anVals = [], bnVals = [], cnVals = [];
+
+  for (let n = 1; n <= Nharm; n++) {
+    const { a, b } = getCoeffs(type, n);
+    const comp = t.map(v => a * Math.cos(n * w0 * v) + b * Math.sin(n * w0 * v));
+    for (let i = 0; i < nPts; i++) approx[i] += comp[i];
+
+    harmonicNums.push(n);
+    anVals.push(a);
+    bnVals.push(b);
+    cnVals.push(Math.sqrt(a * a + b * b));
+
+    if (n <= 8) {
+      componentTraces.push({
+        x: t, y: comp, mode: 'lines',
+        line: { width: 1.5 },
+        name: `n=${n}`,
+        opacity: 0.8
+      });
+    }
+  }
+
+  // Error
+  const error = t.map((_, i) => exact[i] - approx[i]);
+  const mse = error.reduce((s, v) => s + v * v, 0) / nPts;
+
+  // Plot 1: Approximation vs Exact
+  Plotly.react('plot-approx', [
+    { x: t, y: exact, mode: 'lines', line: { color: '#4b5563', width: 1.5, dash: 'dot' }, name: 'Exact' },
+    { x: t, y: Array.from(approx), mode: 'lines', line: { color: '#60a5fa', width: 2.5 }, name: `N=${Nharm}` },
+  ], { ...lo, title: { text: `Fourier Series Approximation (N=${Nharm})`, font: { size: 13 } }, xaxis: { ...lo.xaxis, title: 'Time (s)' }, yaxis: { ...lo.yaxis, title: 'Amplitude', range: [-1.6, 1.6] }, legend: { x: 0.75, y: 1 } }, { responsive: true });
+
+  // Plot 2: Coefficient magnitudes |c_n|
+  const colors = cnVals.map((_, i) => `hsl(${200 + i * 3}, 80%, 60%)`);
+  Plotly.react('plot-coeffs', [{
+    x: harmonicNums, y: cnVals, type: 'bar',
+    marker: { color: colors },
+    name: '|c_n|'
+  }], { ...lo, title: { text: 'Fourier Coefficient Magnitudes |c_n|', font: { size: 13 } }, xaxis: { ...lo.xaxis, title: 'Harmonic n', dtick: Nharm <= 20 ? 1 : 5 }, yaxis: { ...lo.yaxis, title: '|c_n|' }, showlegend: false }, { responsive: true });
+
+  // Plot 3: Individual harmonic components (up to 8)
+  Plotly.react('plot-components', componentTraces, { ...lo, title: { text: 'Individual Harmonic Components (first 8)', font: { size: 13 } }, xaxis: { ...lo.xaxis, title: 'Time (s)' }, yaxis: { ...lo.yaxis, title: 'Amplitude', range: [-1.5, 1.5] }, legend: { font: { size: 9 } } }, { responsive: true });
+
+  // Plot 4: Error
+  Plotly.react('plot-error', [{
+    x: t, y: error, mode: 'lines', line: { color: '#f472b6', width: 1.5 }, fill: 'tozeroy', fillcolor: 'rgba(244,114,182,0.15)', name: 'Error'
+  }], { ...lo, title: { text: `Approximation Error (MSE=${mse.toExponential(2)})`, font: { size: 13 } }, xaxis: { ...lo.xaxis, title: 'Time (s)' }, yaxis: { ...lo.yaxis, title: 'Error' }, showlegend: false }, { responsive: true });
+}
+
+function togglePlay() {
+  playing = !playing;
+  document.getElementById('play-btn').innerHTML = playing ? '&#9632; Stop' : '&#9654; Sweep Harmonics';
+  if (playing) animateSweep();
+  else cancelAnimationFrame(animId);
+}
+
+function animateSweep() {
+  if (!playing) return;
+  const slider = document.getElementById('N');
+  let v = +slider.value + 1;
+  if (v > +slider.max) { v = 1; }
+  slider.value = v;
+  update();
+  animId = setTimeout(() => requestAnimationFrame(animateSweep), 200);
+}
+
+document.getElementById('N').addEventListener('input', update);
+document.getElementById('f0').addEventListener('input', update);
+document.getElementById('waveform').addEventListener('change', update);
+update();
+</script>
+</body>
+</html>

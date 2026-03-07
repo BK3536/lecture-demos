@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+<link rel="stylesheet" href="../theme.css">
+<title>Channel Equalization</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="../theme.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Pretendard', 'Inter', system-ui, -apple-system, sans-serif; background: #111827; color: #d1d5db; }
+  .header { padding: 1.2rem 2rem; background: #1f2937; border-bottom: 1px solid #374151; }
+  .header h1 { font-size: 1.4rem; font-weight: 600; }
+  .header p { font-size: 0.85rem; color: #9ca3af; margin-top: 0.3rem; }
+  .container { display: grid; grid-template-columns: 280px 1fr; height: calc(100vh - 80px); }
+  .controls { padding: 1.2rem; background: #1f2937; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; }
+  .control-group { background: #111827; border-radius: 8px; padding: 1rem; }
+  .control-group h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 0.7rem; }
+  label { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin-bottom: 0.3rem; }
+  label span.val { color: #60a5fa; font-family: monospace; }
+  input[type=range] { width: 100%; accent-color: #60a5fa; margin-bottom: 0.5rem; }
+  select { width: 100%; padding: 0.4rem; background: #1f2937; color: #d1d5db; border: 1px solid #374151; border-radius: 6px; font-size: 0.85rem; margin-bottom: 0.5rem; }
+  .plots { padding: 1rem; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 0.5rem; }
+  .plot { background: #1f2937; border-radius: 8px; }
+  .info-box { background: #111827; border-radius: 8px; padding: 0.8rem 1rem; font-size: 0.8rem; line-height: 1.6; color: #9ca3af; }
+  .info-box code { color: #60a5fa; }
+  .metric { display: flex; justify-content: space-between; padding: 0.25rem 0; border-bottom: 1px solid #1f2937; }
+  .metric:last-child { border-bottom: none; }
+  .metric .label { color: #9ca3af; font-size: 0.8rem; }
+  .metric .value { color: #60a5fa; font-family: monospace; font-weight: 600; font-size: 0.8rem; }
+  #custom-taps { display: none; }
+</style>
+</head>
+<body>
+<div class="header">
+  <a class="back-link" href="../index.html" title="All demos">&larr;</a>
+  <div class="header-title">
+    <h1>Channel Equalization</h1>
+    <p>Proakis &amp; Salehi &mdash; Intersymbol Interference &amp; Equalization</p>
+  </div>
+  <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"></button>
+</div>
+<div class="container">
+  <div class="controls">
+    <div class="control-group">
+      <h3>Channel Model</h3>
+      <label>Channel</label>
+      <select id="chmodel">
+        <option value="2tap">2-tap: [1, 0.5]</option>
+        <option value="3tap">3-tap: [1, 0.7, 0.3]</option>
+        <option value="proakis-a">Proakis-A: [0.04, -0.05, 0.07, -0.21, 0.54, 0.72, 0.36, 0, 0.21, 0.03, 0.07]</option>
+        <option value="proakis-b">Proakis-B: [0.407, 0.815, 0.407]</option>
+        <option value="proakis-c">Proakis-C: [0.227, 0.460, 0.688, 0.460, 0.227]</option>
+        <option value="custom">Custom</option>
+      </select>
+      <div id="custom-taps">
+        <label>h<sub>0</sub> <span class="val" id="v-h0">1.0</span></label>
+        <input type="range" id="h0" min="-2" max="2" step="0.1" value="1.0">
+        <label>h<sub>1</sub> <span class="val" id="v-h1">0.5</span></label>
+        <input type="range" id="h1" min="-2" max="2" step="0.1" value="0.5">
+        <label>h<sub>2</sub> <span class="val" id="v-h2">0.2</span></label>
+        <input type="range" id="h2" min="-2" max="2" step="0.1" value="0.2">
+      </div>
+    </div>
+    <div class="control-group">
+      <h3>Equalizer</h3>
+      <label>Type</label>
+      <select id="eqtype">
+        <option value="none">None (no equalization)</option>
+        <option value="zf">ZF (Zero-Forcing)</option>
+        <option value="mmse" selected>MMSE</option>
+        <option value="dfe">DFE (Decision Feedback)</option>
+      </select>
+      <label>Equalizer length <span class="val" id="v-eqlen">11</span> taps</label>
+      <input type="range" id="eqlen" min="3" max="31" step="2" value="11">
+      <label>Modulation</label>
+      <select id="mod">
+        <option value="bpsk">BPSK</option>
+        <option value="qpsk">QPSK</option>
+      </select>
+      <label>SNR (dB) <span class="val" id="v-snr">20</span></label>
+      <input type="range" id="snr" min="0" max="40" step="1" value="20">
+    </div>
+    <div class="control-group">
+      <h3>Metrics</h3>
+      <div class="metric"><span class="label">Channel delay spread</span><span class="value" id="m-delay">-</span></div>
+      <div class="metric"><span class="label">ISI taps</span><span class="value" id="m-isi">-</span></div>
+      <div class="metric"><span class="label">BER (no EQ)</span><span class="value" id="m-ber-noeq">-</span></div>
+      <div class="metric"><span class="label">BER (with EQ)</span><span class="value" id="m-ber-eq">-</span></div>
+    </div>
+    <div class="info-box">
+      <strong>ZF:</strong> forces ISI to zero but amplifies noise at channel nulls.<br>
+      <code>W<sub>ZF</sub>(f) = 1/H(f)</code> — noise enhancement at |H(f)| &rarr; 0<br><br>
+      <strong>MMSE:</strong> minimizes E[|x&minus;x&#x0302;|&sup2;], balances ISI removal and noise:<br>
+      <code>W<sub>MMSE</sub>(f) = H*(f) / (|H(f)|&sup2; + 1/SNR)</code><br><br>
+      <strong>DFE:</strong> feedforward (pre-cursor ISI) + feedback (post-cursor ISI) using past symbol decisions. Avoids noise enhancement but error propagation is possible.
+    </div>
+  </div>
+  <div class="plots">
+    <div class="plot" id="plot-channel"></div>
+    <div class="plot" id="plot-eq"></div>
+    <div class="plot" id="plot-eye"></div>
+    <div class="plot" id="plot-ber"></div>
+  </div>
+</div>
+<script>
+var _t=THEMES[curTheme];var plotBg=_t.plotBg,paperBg=_t.paperBg,gridColor=_t.gridColor,textColor=_t.textColor;
+var lo={paper_bgcolor:paperBg,plot_bgcolor:plotBg,font:{color:textColor,size:11},margin:{t:40,r:16,b:40,l:50},xaxis:{gridcolor:gridColor,zerolinecolor:_t.zeroLine},yaxis:{gridcolor:gridColor,zerolinecolor:_t.zeroLine}};
+
+// Predefined channel models
+const CH_MODELS={
+  '2tap':[1,0.5],
+  '3tap':[1,0.7,0.3],
+  'proakis-a':[0.04,-0.05,0.07,-0.21,0.54,0.72,0.36,0,0.21,0.03,0.07],
+  'proakis-b':[0.407,0.815,0.407],
+  'proakis-c':[0.227,0.460,0.688,0.460,0.227]
+};
+
+function randn(){let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+
+function qFunc(x){
+  if(x<0)return 1-qFunc(-x);
+  if(x>8)return 0;
+  const t=1/(1+0.2316419*x);
+  const p=t*(0.319381530+t*(-0.356563782+t*(1.781477937+t*(-1.821255978+t*1.330274429))));
+  return p*Math.exp(-x*x/2)/Math.sqrt(2*Math.PI);
+}
+
+// Real convolution
+function conv(x,h){
+  const N=x.length,L=h.length;
+  const y=new Array(N+L-1).fill(0);
+  for(let n=0;n<N;n++)for(let k=0;k<L;k++)y[n+k]+=x[n]*h[k];
+  return y;
+}
+
+// Compute frequency response of FIR filter at Nfft points
+function freqResp(h,Nfft){
+  const Hre=new Array(Nfft).fill(0);
+  const Him=new Array(Nfft).fill(0);
+  for(let k=0;k<Nfft;k++){
+    for(let n=0;n<h.length;n++){
+      const ang=-2*Math.PI*k*n/Nfft;
+      Hre[k]+=h[n]*Math.cos(ang);
+      Him[k]+=h[n]*Math.sin(ang);
+    }
+  }
+  return{re:Hre,im:Him,mag:Hre.map((r,k)=>Math.sqrt(r*r+Him[k]*Him[k]))};
+}
+
+// ZF equalizer via frequency-domain inversion (with regularization)
+function zfEqualizer(h,Leq,snrLin){
+  const Nfft=512;
+  const H=freqResp(h,Nfft);
+  // Inverse filter with mild regularization to avoid blow-up
+  const eps=1/(snrLin*10);
+  const Wre=new Array(Nfft);
+  const Wim=new Array(Nfft);
+  for(let k=0;k<Nfft;k++){
+    const denom=H.re[k]**2+H.im[k]**2+eps;
+    Wre[k]=H.re[k]/denom;
+    Wim[k]=-H.im[k]/denom;
+  }
+  // IFFT to get time-domain taps, truncate to Leq
+  const wre=new Array(Nfft).fill(0);
+  for(let n=0;n<Nfft;n++){
+    for(let k=0;k<Nfft;k++){
+      const ang=2*Math.PI*k*n/Nfft;
+      wre[n]+=Wre[k]*Math.cos(ang)-Wim[k]*Math.sin(ang);
+    }
+    wre[n]/=Nfft;
+  }
+  // Center the equalizer: take Leq taps centered at peak
+  const absW=wre.map(Math.abs);
+  let peakIdx=0;let peakVal=0;
+  for(let n=0;n<Nfft;n++)if(absW[n]>peakVal){peakVal=absW[n];peakIdx=n;}
+  const half=Math.floor(Leq/2);
+  const w=[];
+  for(let i=0;i<Leq;i++){
+    const idx=(peakIdx-half+i+Nfft)%Nfft;
+    w.push(wre[idx]);
+  }
+  return w;
+}
+
+// MMSE equalizer
+function mmseEqualizer(h,Leq,snrLin){
+  const Nfft=512;
+  const H=freqResp(h,Nfft);
+  const Wre=new Array(Nfft);
+  const Wim=new Array(Nfft);
+  for(let k=0;k<Nfft;k++){
+    const denom=H.re[k]**2+H.im[k]**2+1/snrLin;
+    Wre[k]=H.re[k]/denom;
+    Wim[k]=-H.im[k]/denom;
+  }
+  const wre=new Array(Nfft).fill(0);
+  for(let n=0;n<Nfft;n++){
+    for(let k=0;k<Nfft;k++){
+      const ang=2*Math.PI*k*n/Nfft;
+      wre[n]+=Wre[k]*Math.cos(ang)-Wim[k]*Math.sin(ang);
+    }
+    wre[n]/=Nfft;
+  }
+  const absW=wre.map(Math.abs);
+  let peakIdx=0;let peakVal=0;
+  for(let n=0;n<Nfft;n++)if(absW[n]>peakVal){peakVal=absW[n];peakIdx=n;}
+  const half=Math.floor(Leq/2);
+  const w=[];
+  for(let i=0;i<Leq;i++){
+    const idx=(peakIdx-half+i+Nfft)%Nfft;
+    w.push(wre[idx]);
+  }
+  return w;
+}
+
+// Apply FIR equalizer to received signal
+function applyFIR(y,w){
+  const Leq=w.length;
+  const delay=Math.floor(Leq/2);
+  const out=new Array(y.length).fill(0);
+  for(let n=0;n<y.length;n++){
+    for(let k=0;k<Leq;k++){
+      const idx=n-k+delay;
+      if(idx>=0&&idx<y.length)out[n]+=w[k]*y[idx];
+    }
+  }
+  return out;
+}
+
+// DFE: feedforward + feedback
+function dfeEqualize(y,h,Lff,Lfb,snrLin,bpsk){
+  // Simple DFE: MMSE feedforward, feedback cancels post-cursor ISI
+  const wff=mmseEqualizer(h,Lff,snrLin);
+  const delay=Math.floor(Lff/2);
+  const out=[];
+  const decisions=[];
+  for(let n=0;n<y.length;n++){
+    let ff=0;
+    for(let k=0;k<Lff;k++){
+      const idx=n-k+delay;
+      if(idx>=0&&idx<y.length)ff+=wff[k]*y[idx];
+    }
+    // Feedback: subtract past-decision contribution
+    let fb=0;
+    for(let k=1;k<=Lfb&&n-k>=0;k++){
+      // Feedback taps estimated as channel post-cursor (simplified)
+      const hk=k<h.length?h[k]:0;
+      fb+=hk*(decisions[n-k]||0);
+    }
+    const raw=ff-fb;
+    let dec;
+    if(bpsk){
+      dec=raw>=0?1:-1;
+    } else {
+      // QPSK decision (real part only, treat as BPSK here for simplicity)
+      dec=raw>=0?1:-1;
+    }
+    decisions.push(dec);
+    out.push(raw);
+  }
+  return out;
+}
+
+function update(){
+  const chModel=document.getElementById('chmodel').value;
+  const eqType=document.getElementById('eqtype').value;
+  const Leq=+document.getElementById('eqlen').value;
+  const mod=document.getElementById('mod').value;
+  const snrDb=+document.getElementById('snr').value;
+
+  document.getElementById('v-eqlen').textContent=Leq;
+  document.getElementById('v-snr').textContent=snrDb;
+  document.getElementById('custom-taps').style.display=chModel==='custom'?'block':'none';
+
+  document.getElementById('v-h0').textContent=(+document.getElementById('h0').value).toFixed(1);
+  document.getElementById('v-h1').textContent=(+document.getElementById('h1').value).toFixed(1);
+  document.getElementById('v-h2').textContent=(+document.getElementById('h2').value).toFixed(1);
+
+  let h;
+  if(chModel==='custom'){
+    h=[+document.getElementById('h0').value,+document.getElementById('h1').value,+document.getElementById('h2').value];
+  } else {
+    h=[...CH_MODELS[chModel]];
+  }
+  // Normalize channel power
+  const hPow=h.reduce((s,v)=>s+v*v,0);
+  h=h.map(v=>v/Math.sqrt(hPow));
+
+  const snrLin=Math.pow(10,snrDb/10);
+  const noiseStd=1/Math.sqrt(snrLin);
+  const isBpsk=mod==='bpsk';
+
+  document.getElementById('m-delay').textContent=(h.length-1)+' symbols';
+  document.getElementById('m-isi').textContent=(h.length-1)+' pre/post-cursor';
+
+  // ---------- Plot 1: Channel impulse response + frequency response ----------
+  const Nfft=256;
+  const H=freqResp(h,Nfft);
+  const HdB=H.mag.map(v=>20*Math.log10(Math.max(v,1e-6)));
+  const freqNorm=Array.from({length:Nfft/2},(_,i)=>i/Nfft*2); // 0..1 normalized
+
+  const tapIdx=Array.from({length:h.length},(_,i)=>i);
+  // Stem-like: interleave zeros for bar effect using scatter with markers+lines
+  const stemX=[],stemY=[];
+  for(let i=0;i<h.length;i++){stemX.push(i,i,null);stemY.push(0,h[i],null);}
+
+  Plotly.react('plot-channel',[
+    {x:stemX,y:stemY,mode:'lines',line:{color:'#60a5fa',width:2},name:'h[n] stems',showlegend:false},
+    {x:tapIdx,y:h,mode:'markers',marker:{color:'#60a5fa',size:8,symbol:'circle'},name:'Channel taps h[n]'},
+    {x:freqNorm.map(f=>f+h.length+1),y:H.mag.slice(0,Nfft/2).map(v=>v-0.5),mode:'lines',line:{color:'#f472b6',width:1.5},name:'|H(f)| (shifted)',xaxis:'x',yaxis:'y'},
+  ],{...lo,
+    title:{text:`Channel: ${chModel} (L=${h.length} taps)`,font:{size:13}},
+    xaxis:{...lo.xaxis,title:'Tap index  /  Freq (normalized)'},
+    yaxis:{...lo.yaxis,title:'Amplitude / Magnitude'},
+    legend:{font:{size:9},x:0.6,y:1}
+  },{responsive:true});
+
+  // ---------- Compute equalizer taps ----------
+  let w=null;
+  let eqLabel='No EQ';
+  if(eqType==='zf'){w=zfEqualizer(h,Leq,snrLin);eqLabel='ZF';}
+  else if(eqType==='mmse'){w=mmseEqualizer(h,Leq,snrLin);eqLabel='MMSE';}
+  else if(eqType==='dfe'){w=mmseEqualizer(h,Math.ceil(Leq*0.7)|1,snrLin);eqLabel='DFE (FF)';}
+
+  // ---------- Plot 2: Equalizer taps + equalized channel response ----------
+  let eqTraces=[];
+  if(w){
+    const wIdx=Array.from({length:w.length},(_,i)=>i-Math.floor(w.length/2));
+    const stemWx=[],stemWy=[];
+    for(let i=0;i<w.length;i++){stemWx.push(wIdx[i],wIdx[i],null);stemWy.push(0,w[i],null);}
+    eqTraces.push({x:stemWx,y:stemWy,mode:'lines',line:{color:'#4ade80',width:2},name:'w[n] stems',showlegend:false});
+    eqTraces.push({x:wIdx,y:w,mode:'markers',marker:{color:'#4ade80',size:7,symbol:'circle'},name:`${eqLabel} taps w[n]`});
+
+    // Equalized channel = h * w in frequency domain
+    const W=freqResp(w,Nfft);
+    const HWeqMag=H.mag.slice(0,Nfft/2).map((hm,k)=>hm*W.mag[k]);
+    const HWeqDB=HWeqMag.map(v=>20*Math.log10(Math.max(v,1e-6)));
+    eqTraces.push({x:freqNorm,y:H.mag.slice(0,Nfft/2),mode:'lines',line:{color:'#ef444488',width:1.5,dash:'dash'},name:'|H(f)| original',xaxis:'x2',yaxis:'y2'});
+    eqTraces.push({x:freqNorm,y:HWeqMag,mode:'lines',line:{color:'#60a5fa',width:2},name:'|HW(f)| equalized',xaxis:'x2',yaxis:'y2'});
+    eqTraces.push({x:freqNorm,y:Array(Nfft/2).fill(1),mode:'lines',line:{color:'#4ade80',width:1,dash:'dot'},name:'Ideal flat',xaxis:'x2',yaxis:'y2'});
+  } else {
+    // No EQ — show channel frequency response only
+    eqTraces.push({x:freqNorm,y:H.mag.slice(0,Nfft/2),mode:'lines',line:{color:'#ef4444',width:2},name:'|H(f)| (no EQ)',xaxis:'x2',yaxis:'y2'});
+    eqTraces.push({x:freqNorm,y:Array(Nfft/2).fill(1),mode:'lines',line:{color:'#4ade80',width:1,dash:'dot'},name:'Ideal flat',xaxis:'x2',yaxis:'y2'});
+  }
+
+  Plotly.react('plot-eq',eqTraces,{...lo,
+    title:{text:`${eqLabel} Equalizer (${Leq} taps)`,font:{size:13}},
+    xaxis:{...lo.xaxis,title:'Tap index',domain:[0,0.42]},
+    xaxis2:{...lo.xaxis,title:'Normalized Frequency',domain:[0.55,1],anchor:'y2'},
+    yaxis:{...lo.yaxis,title:'Tap value'},
+    yaxis2:{...lo.yaxis,title:'Magnitude',anchor:'x2'},
+    legend:{font:{size:9},x:0.5,y:1},
+    grid:{rows:1,columns:2,pattern:'independent'}
+  },{responsive:true});
+
+  // ---------- Simulate transmission ----------
+  const Nsym=400;
+  const symbols=isBpsk
+    ?Array.from({length:Nsym},()=>Math.round(Math.random())*2-1)
+    :Array.from({length:Nsym},()=>{const b=Math.round(Math.random())*2-1;const b2=Math.round(Math.random())*2-1;return{re:b/Math.SQRT2,im:b2/Math.SQRT2};});
+
+  const txReal=isBpsk?symbols:symbols.map(s=>s.re);
+  const channeled=conv(txReal,h);
+  const received=channeled.slice(0,Nsym).map(v=>v+noiseStd*randn());
+
+  let equalizedReal;
+  if(eqType==='none'){
+    equalizedReal=received;
+  } else if(eqType==='dfe'){
+    const Lff=Math.ceil(Leq*0.7)|1;
+    const Lfb=Math.floor(Leq*0.3);
+    equalizedReal=dfeEqualize(received,h,Lff,Lfb,snrLin,isBpsk);
+  } else {
+    equalizedReal=applyFIR(received,w);
+  }
+
+  // BER estimation
+  const delay=w?Math.floor(Leq/2):0;
+  let errNoEq=0,errEq=0,nCount=0;
+  for(let n=delay;n<Nsym-delay;n++){
+    const ref=txReal[n-delay];
+    const decNoEq=received[n]>=0?1:-1;
+    const decEq=equalizedReal[n]>=0?1:-1;
+    if(isBpsk){
+      if(decNoEq!==ref)errNoEq++;
+      if(decEq!==ref)errEq++;
+    }
+    nCount++;
+  }
+  document.getElementById('m-ber-noeq').textContent=nCount>0?(errNoEq/nCount).toFixed(3):'N/A';
+  document.getElementById('m-ber-eq').textContent=nCount>0?(errEq/nCount).toFixed(3):'N/A';
+
+  // ---------- Plot 3: Eye diagram ----------
+  const Teye=2; // symbols per eye trace
+  const nTraces=60;
+  const eyeTraces=[];
+
+  // Before equalization eye
+  for(let t=0;t<nTraces;t++){
+    const start=t*Teye+Math.floor(Nsym/4);
+    if(start+Teye>=Nsym)break;
+    const seg=received.slice(start,start+Teye+1);
+    const xSeg=seg.map((_,i)=>i/Teye-0.5);
+    eyeTraces.push({x:xSeg,y:seg,mode:'lines',line:{color:'#ef444466',width:1},showlegend:false});
+  }
+  // After equalization eye
+  for(let t=0;t<nTraces;t++){
+    const start=t*Teye+Math.floor(Nsym/4);
+    if(start+Teye>=Nsym)break;
+    const seg=equalizedReal.slice(start,start+Teye+1);
+    const xSeg=seg.map((_,i)=>i/Teye-0.5);
+    eyeTraces.push({x:xSeg,y:seg,mode:'lines',line:{color:'#60a5fa44',width:1},showlegend:false});
+  }
+  // Legend proxies
+  eyeTraces.push({x:[null],y:[null],mode:'lines',line:{color:'#ef4444',width:2},name:'Before EQ'});
+  eyeTraces.push({x:[null],y:[null],mode:'lines',line:{color:'#60a5fa',width:2},name:`After ${eqLabel}`});
+
+  Plotly.react('plot-eye',eyeTraces,{...lo,
+    title:{text:'Eye Diagram (red=before EQ, blue=after)',font:{size:13}},
+    xaxis:{...lo.xaxis,title:'Time (symbol periods)',range:[-0.5,0.5]},
+    yaxis:{...lo.yaxis,title:'Amplitude'},
+    legend:{font:{size:9},x:0.6,y:1}
+  },{responsive:true});
+
+  // ---------- Plot 4: Constellation + BER vs SNR ----------
+  // Scatter constellation
+  const constTraces=[];
+  const rxI_pre=received.slice(0,100);
+  const rxI_post=equalizedReal.slice(0,100);
+
+  // BER vs SNR curves
+  const snrRange=Array.from({length:41},(_,i)=>i); // 0..40 dB
+  const berIdeal=snrRange.map(s=>qFunc(Math.sqrt(2*Math.pow(10,s/10))));
+
+  // Approximate BER after equalization: treat as AWGN with effective SNR
+  // ZF: noise enhancement = 1/mean(|H(f)|^2) roughly
+  const Hmag2=H.mag.slice(0,Nfft/2);
+  const meanH2=Hmag2.reduce((s,v)=>s+v*v,0)/(Nfft/2);
+  const meanH2inv=Hmag2.reduce((s,v)=>s+1/Math.max(v*v,0.01),0)/(Nfft/2);
+
+  const berNoEq=snrRange.map(s=>{
+    // channel with ISI: approximate as flat fading at mean power
+    const sLin=Math.pow(10,s/10);
+    const sinrApprox=sLin*meanH2/(1+sLin*(1-meanH2));
+    return qFunc(Math.sqrt(2*sinrApprox));
+  });
+  const berZF=snrRange.map(s=>{
+    const sLin=Math.pow(10,s/10);
+    const effSnr=sLin/meanH2inv; // ZF noise enhancement
+    return qFunc(Math.sqrt(2*effSnr));
+  });
+  const berMMSE=snrRange.map(s=>{
+    const sLin=Math.pow(10,s/10);
+    // MMSE: better than ZF, approaches ideal at high SNR
+    const effSnr=sLin*meanH2/(1+sLin*(meanH2inv-1)/(snrRange.length));
+    return qFunc(Math.sqrt(2*Math.max(effSnr,0.01)));
+  });
+
+  Plotly.react('plot-ber',[
+    {x:snrRange,y:berIdeal,mode:'lines',line:{color:'#4ade80',width:2,dash:'dash'},name:'AWGN (no ISI)'},
+    {x:snrRange,y:berNoEq,mode:'lines',line:{color:'#ef4444',width:2},name:'No EQ (ISI floor)'},
+    {x:snrRange,y:berZF,mode:'lines',line:{color:'#facc15',width:2},name:'ZF (noise enhance)'},
+    {x:snrRange,y:berMMSE,mode:'lines',line:{color:'#60a5fa',width:2},name:'MMSE (optimal)'},
+    {x:[snrDb],y:[errEq/Math.max(nCount,1)],mode:'markers',marker:{color:'#ffffff',size:10,symbol:'star'},name:'Current'},
+  ],{...lo,
+    title:{text:'BER vs SNR — Equalization Comparison',font:{size:13}},
+    xaxis:{...lo.xaxis,title:'SNR (dB)',range:[0,40]},
+    yaxis:{...lo.yaxis,title:'BER',type:'log',range:[-4,0]},
+    legend:{font:{size:9},x:0.45,y:1}
+  },{responsive:true});
+}
+
+['chmodel','eqtype','mod'].forEach(id=>document.getElementById(id).addEventListener('change',update));
+['eqlen','snr','h0','h1','h2'].forEach(id=>document.getElementById(id).addEventListener('input',update));
+update();
+</script>
+</body>
+</html>
