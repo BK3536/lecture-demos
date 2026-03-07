@@ -31,6 +31,11 @@
   .metric:last-child { border-bottom: none; }
   .metric .label { color: #9ca3af; font-size: 0.8rem; }
   .metric .value { color: #60a5fa; font-family: monospace; font-weight: 600; font-size: 0.8rem; }
+  .play-btn { width: 100%; padding: 0.5rem; background: #60a5fa; color: #111827; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.85rem; }
+  .play-btn:hover { background: #7dd3fc; }
+  .step-group { display: flex; gap: 0.4rem; margin-top: 0.4rem; }
+  .step-btn { flex: 1; padding: 0.4rem; background: #374151; color: #d1d5db; border: 1px solid #4b5563; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.85rem; }
+  .step-btn:hover { background: #4b5563; }
 </style>
 </head>
 <body>
@@ -62,6 +67,14 @@
       <input type="range" id="delay" min="0" max="16" step="1" value="3">
       <label>SNR (dB) <span class="val" id="v-snr">25</span></label>
       <input type="range" id="snr" min="0" max="40" step="1" value="25">
+    </div>
+    <div class="control-group">
+      <h3>Animation</h3>
+      <button class="play-btn" id="play-btn" onclick="togglePlay()">&#9654; Build Subcarriers</button>
+      <div class="step-group">
+        <button class="step-btn" onclick="stepDown()" title="Remove subcarriers">&#9664; −4</button>
+        <button class="step-btn" onclick="stepUp()" title="Add subcarriers">+4 &#9654;</button>
+      </div>
     </div>
     <div class="control-group">
       <h3>Metrics</h3>
@@ -270,6 +283,36 @@ function update(){
 
 ['mod'].forEach(id=>document.getElementById(id).addEventListener('change',update));
 ['nsc','cp','delay','snr'].forEach(id=>document.getElementById(id).addEventListener('input',update));
+var playing = false, animId = null;
+function togglePlay() {
+  playing = !playing;
+  document.getElementById('play-btn').innerHTML = playing ? '&#9632; Stop' : '&#9654; Build Subcarriers';
+  if (playing) animateSweep();
+  else { clearTimeout(animId); cancelAnimationFrame(animId); }
+}
+function animateSweep() {
+  if (!playing) return;
+  var slider = document.getElementById('nsc');
+  var v = +slider.value + 4;
+  if (v > +slider.max) v = +slider.min;
+  slider.value = v;
+  update();
+  animId = setTimeout(function() { animId = requestAnimationFrame(animateSweep); }, 400);
+}
+function stepDown() {
+  if (playing) togglePlay();
+  var slider = document.getElementById('nsc');
+  var v = Math.max(+slider.value - 4, +slider.min);
+  slider.value = v;
+  update();
+}
+function stepUp() {
+  if (playing) togglePlay();
+  var slider = document.getElementById('nsc');
+  var v = Math.min(+slider.value + 4, +slider.max);
+  slider.value = v;
+  update();
+}
 update();
 </script>
 </body>

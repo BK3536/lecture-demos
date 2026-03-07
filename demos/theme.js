@@ -70,5 +70,53 @@ function _relayoutPlots() {
   });
 }
 
-/* ── Set icon on load ────────────────────────────────── */
-document.addEventListener('DOMContentLoaded', _updateToggleIcon);
+/* ── Fullscreen toggle ───────────────────────────────── */
+function toggleFullscreen() {
+  var c = document.querySelector('.container');
+  if (!c) return;
+  c.classList.toggle('fs-active');
+  _updateFullscreenIcon();
+  // Trigger Plotly resize after layout change
+  setTimeout(function() {
+    if (typeof Plotly !== 'undefined') {
+      document.querySelectorAll('.plot').forEach(function(el) {
+        if (el.data) try { Plotly.Plots.resize(el); } catch(e) {}
+      });
+    }
+  }, 100);
+}
+
+function _updateFullscreenIcon() {
+  var btn = document.querySelector('.fullscreen-toggle');
+  if (!btn) return;
+  var active = document.querySelector('.container.fs-active');
+  btn.innerHTML = active
+    ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>'
+    : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>';
+}
+
+/* ── ESC to exit fullscreen ──────────────────────────── */
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' && document.querySelector('.container.fs-active')) {
+    toggleFullscreen();
+  }
+});
+
+/* ── Inject fullscreen button on load ────────────────── */
+function _injectFullscreenButton() {
+  var header = document.querySelector('.header');
+  var themeBtn = document.querySelector('.theme-toggle');
+  if (!header || !themeBtn || !document.querySelector('.container')) return;
+  var btn = document.createElement('button');
+  btn.className = 'fullscreen-toggle';
+  btn.title = 'Toggle fullscreen (ESC to exit)';
+  btn.onclick = toggleFullscreen;
+  header.insertBefore(btn, themeBtn);
+  _updateFullscreenIcon();
+}
+
+/* ── Set icons on load ───────────────────────────────── */
+document.addEventListener('DOMContentLoaded', function() {
+  _updateToggleIcon();
+  _injectFullscreenButton();
+});

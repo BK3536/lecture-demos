@@ -31,6 +31,11 @@
   .status.ok { background: rgba(74,222,128,0.15); color: #4ade80; border: 1px solid #4ade80; }
   .status.warn { background: rgba(250,204,21,0.15); color: #facc15; border: 1px solid #facc15; }
   .status.bad { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid #ef4444; }
+  .play-btn { width: 100%; padding: 0.5rem; background: #60a5fa; color: #111827; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.85rem; }
+  .play-btn:hover { background: #7dd3fc; }
+  .step-group { display: flex; gap: 0.4rem; margin-top: 0.4rem; }
+  .step-btn { flex: 1; padding: 0.4rem; background: #374151; color: #d1d5db; border: 1px solid #4b5563; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.85rem; }
+  .step-btn:hover { background: #4b5563; }
 </style>
 </head>
 <body>
@@ -61,6 +66,14 @@
       <label>Sampling freq f<sub>s</sub> (Hz) <span class="val" id="v-fs">30</span></label>
       <input type="range" id="fs" min="2" max="100" step="1" value="30">
       <div class="status" id="nyquist-status"></div>
+    </div>
+    <div class="control-group">
+      <h3>Animation</h3>
+      <button class="play-btn" id="play-btn" onclick="togglePlay()">&#9654; Sweep f<sub>s</sub></button>
+      <div class="step-group">
+        <button class="step-btn" onclick="stepDown()" title="Decrease fs">&#9664; −f<sub>s</sub></button>
+        <button class="step-btn" onclick="stepUp()" title="Increase fs">+f<sub>s</sub> &#9654;</button>
+      </div>
     </div>
     <div class="control-group">
       <h3>Display</h3>
@@ -301,6 +314,36 @@ function update() {
 ['signal'].forEach(id=>document.getElementById(id).addEventListener('change',update));
 ['f','f2','fs'].forEach(id=>document.getElementById(id).addEventListener('input',update));
 ['show-recon','show-copies'].forEach(id=>document.getElementById(id).addEventListener('change',update));
+var playing = false, animId = null;
+function togglePlay() {
+  playing = !playing;
+  document.getElementById('play-btn').innerHTML = playing ? '&#9632; Stop' : '&#9654; Sweep f<sub>s</sub>';
+  if (playing) animateSweep();
+  else { clearTimeout(animId); cancelAnimationFrame(animId); }
+}
+function animateSweep() {
+  if (!playing) return;
+  var slider = document.getElementById('fs');
+  var v = +slider.value - 1;
+  if (v < +slider.min) v = +slider.max;
+  slider.value = v;
+  update();
+  animId = setTimeout(function() { animId = requestAnimationFrame(animateSweep); }, 150);
+}
+function stepDown() {
+  if (playing) togglePlay();
+  var slider = document.getElementById('fs');
+  var v = Math.max(+slider.value - 2, +slider.min);
+  slider.value = v;
+  update();
+}
+function stepUp() {
+  if (playing) togglePlay();
+  var slider = document.getElementById('fs');
+  var v = Math.min(+slider.value + 2, +slider.max);
+  slider.value = v;
+  update();
+}
 update();
 </script>
 </body>

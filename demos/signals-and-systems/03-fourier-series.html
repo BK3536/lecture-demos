@@ -29,6 +29,9 @@
   .info-box code { color: #60a5fa; }
   .play-btn { width: 100%; padding: 0.5rem; background: #60a5fa; color: #111827; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.85rem; }
   .play-btn:hover { background: #7dd3fc; }
+  .step-group { display: flex; gap: 0.4rem; margin-top: 0.4rem; }
+  .step-btn { flex: 1; padding: 0.4rem; background: #374151; color: #d1d5db; border: 1px solid #4b5563; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.85rem; }
+  .step-btn:hover { background: #4b5563; }
 </style>
 </head>
 <body>
@@ -61,6 +64,10 @@
     <div class="control-group">
       <h3>Animation</h3>
       <button class="play-btn" id="play-btn" onclick="togglePlay()">&#9654; Sweep Harmonics</button>
+      <div class="step-group">
+        <button class="step-btn" onclick="stepBack()" title="Remove harmonic">&#9664; −1</button>
+        <button class="step-btn" onclick="stepForward()" title="Add harmonic">+1 &#9654;</button>
+      </div>
     </div>
     <div class="info-box">
       <strong>Fourier Series</strong><br>
@@ -199,6 +206,21 @@ function animateSweep() {
   slider.value = v;
   update();
   animId = setTimeout(() => requestAnimationFrame(animateSweep), 200);
+}
+
+function stepForward() {
+  if (playing) togglePlay();
+  var slider = document.getElementById('N');
+  var v = Math.min(+slider.value + 1, +slider.max);
+  slider.value = v;
+  update();
+}
+function stepBack() {
+  if (playing) togglePlay();
+  var slider = document.getElementById('N');
+  var v = Math.max(+slider.value - 1, +slider.min);
+  slider.value = v;
+  update();
 }
 
 document.getElementById('N').addEventListener('input', update);
