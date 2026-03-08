@@ -167,11 +167,24 @@ function update(){
   const reorderedMag=Array.from({length:Nfft},(_,k)=>dopMag[(k+Nfft/2)%Nfft]);
   const velAxisDop=fAxis.map(f=>f*lambda/2);
 
+  // Aliased velocity for spectrum annotation
+  let fdSpec=fd%prf;
+  if(fdSpec>prf/2) fdSpec-=prf;
+  if(fdSpec<-prf/2) fdSpec+=prf;
+  const vAlias=fdSpec*lambda/2;
+  const isAliased=Math.abs(vAlias-vEff)>0.5;
+
+  const specShapes=[{type:'line',x0:vAlias,x1:vAlias,y0:-50,y1:5,line:{color:'#facc15',width:1.5,dash:'dash'}}];
+  const specAnnot=[{x:vAlias,y:2,text:isAliased?`aliased: ${vAlias.toFixed(1)} m/s`:`v=${vEff.toFixed(1)} m/s`,showarrow:false,font:{color:'#facc15',size:10},yshift:10}];
+  if(isAliased){
+    specShapes.push({type:'line',x0:vEff,x1:vEff,y0:-50,y1:5,line:{color:'#ef4444',width:1,dash:'dot'}});
+    specAnnot.push({x:vEff,y:-5,text:`true: ${vEff.toFixed(1)}`,showarrow:true,arrowcolor:'#ef4444',font:{color:'#ef4444',size:9},ay:-20});
+  }
+
   Plotly.react('plot-spectrum',[
     {x:velAxisDop,y:reorderedMag,mode:'lines',line:{color:'#4ade80',width:2.5},name:'Doppler Spectrum'},
   ],{...lo,title:{text:`Doppler Spectrum (N=${Np} pulses)`,font:{size:13}},xaxis:{...lo.xaxis,title:'Velocity (m/s)'},yaxis:{...lo.yaxis,title:'Magnitude (dB)',range:[-50,5]},
-    shapes:[{type:'line',x0:vEff,x1:vEff,y0:-50,y1:5,line:{color:'#facc15',width:1.5,dash:'dash'}}],
-    annotations:[{x:vEff,y:2,text:`v=${vEff.toFixed(1)} m/s`,showarrow:false,font:{color:'#facc15',size:10},yshift:10}]
+    shapes:specShapes, annotations:specAnnot
   },{responsive:true});
 
   // Plot 3: fd vs velocity for different frequencies
@@ -185,21 +198,33 @@ function update(){
   Plotly.react('plot-fd-vel',fdTraces,{...lo,title:{text:'Doppler Shift vs Velocity (different bands)',font:{size:13}},xaxis:{...lo.xaxis,title:'Velocity (m/s)'},yaxis:{...lo.yaxis,title:'Doppler (kHz)'},legend:{font:{size:9}}},{responsive:true});
 
   // Plot 4: Velocity ambiguity diagram
-  // Show how velocity wraps with PRF
-  const trueVel=Array.from({length:400},(_,i)=>-200+i);
-  const measuredVel=trueVel.map(v=>{
+  // Show how velocity wraps with PRF — insert null at discontinuities
+  const trueVelX=[], measuredVelY=[];
+  let prevMeas=null;
+  for(let i=0;i<400;i++){
+    const v=-200+i;
     const fdv=2*v/lambda;
-    // Wrap to [-PRF/2, PRF/2]
     let fdWrapped=fdv%prf;
     if(fdWrapped>prf/2) fdWrapped-=prf;
     if(fdWrapped<-prf/2) fdWrapped+=prf;
-    return fdWrapped*lambda/2;
-  });
+    const meas=fdWrapped*lambda/2;
+    // Insert null to break line at wrapping discontinuity
+    if(prevMeas!==null && Math.abs(meas-prevMeas)>vmax){
+      trueVelX.push(v); measuredVelY.push(null);
+    }
+    trueVelX.push(v); measuredVelY.push(meas);
+    prevMeas=meas;
+  }
+  // Compute aliased measured velocity for current target
+  let fdAlias=fd%prf;
+  if(fdAlias>prf/2) fdAlias-=prf;
+  if(fdAlias<-prf/2) fdAlias+=prf;
+  const vMeas=fdAlias*lambda/2;
 
   Plotly.react('plot-ambiguity',[
-    {x:trueVel,y:trueVel,mode:'lines',line:{color:'#4b5563',width:1,dash:'dot'},name:'True (no aliasing)'},
-    {x:trueVel,y:measuredVel,mode:'lines',line:{color:'#a78bfa',width:2.5},name:'Measured (PRF limited)'},
-    {x:[vEff],y:[vEff],mode:'markers',marker:{size:12,color:'#ef4444',symbol:'star'},name:'Current target'},
+    {x:trueVelX,y:trueVelX,mode:'lines',line:{color:'#4b5563',width:1,dash:'dot'},name:'True (no aliasing)'},
+    {x:trueVelX,y:measuredVelY,mode:'lines',line:{color:'#a78bfa',width:2.5},name:'Measured (PRF limited)'},
+    {x:[vEff],y:[vMeas],mode:'markers',marker:{size:12,color:'#ef4444',symbol:'star'},name:'Current target'},
   ],{...lo,title:{text:`Velocity Ambiguity (v_max = \u00B1${vmax.toFixed(1)} m/s)`,font:{size:13}},xaxis:{...lo.xaxis,title:'True Velocity (m/s)'},yaxis:{...lo.yaxis,title:'Measured Velocity (m/s)'},
     shapes:[
       {type:'rect',x0:-vmax,x1:vmax,y0:-vmax,y1:vmax,fillcolor:'rgba(74,222,128,0.05)',line:{color:'#4ade80',dash:'dash',width:1}},

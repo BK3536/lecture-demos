@@ -300,9 +300,7 @@ function jacobiEigen(A, n) {
 // Evaluates DFT at M equally spaced frequencies from fStart to fEnd
 function czt(x, M, fStart, fEnd) {
   const N = x.length;
-  const W = Math.exp(-2*Math.PI*1j); // conceptual
-  // W = e^{-j 2pi (fEnd-fStart)/((M-1)*FS)}
-  // A = e^{j 2pi fStart/FS}
+  // CZT parameters: A = e^{j 2pi fStart/FS}, W = e^{-j 2pi dF/FS}
   const dF = (fEnd-fStart)/Math.max(M-1,1);
   const AAngle = 2*Math.PI*fStart/FS;
   const WAngle = -2*Math.PI*dF/FS;

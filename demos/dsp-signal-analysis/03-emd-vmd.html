@@ -278,7 +278,7 @@ function irfft(re,im){
   const r=Float64Array.from(re),i2=Float64Array.from(im);
   for(let k=0;k<N;k++)i2[k]=-i2[k];
   fftInPlace(r,i2);
-  for(let k=0;k<N;k++)i2[k]=-i2[k]/N;
+  for(let k=0;k<N;k++){r[k]/=N; i2[k]=-i2[k]/N;}
   return{re:r,im:i2};
 }
 
@@ -381,7 +381,7 @@ function hilbert(x) {
   // IFFT
   for(let k=0;k<Nfft;k++) im[k]=-im[k];
   fftInPlace(re,im);
-  for(let k=0;k<Nfft;k++){im[k]=-im[k]/Nfft;}
+  for(let k=0;k<Nfft;k++){re[k]/=Nfft; im[k]=-im[k]/Nfft;}
   // Analytic signal: re = original, im = Hilbert transform
   return {re:Array.from(re.slice(0,N)),im:Array.from(im.slice(0,N))};
 }

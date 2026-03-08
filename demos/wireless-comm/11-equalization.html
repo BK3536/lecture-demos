@@ -88,8 +88,8 @@
       <h3>Metrics</h3>
       <div class="metric"><span class="label">Channel delay spread</span><span class="value" id="m-delay">-</span></div>
       <div class="metric"><span class="label">ISI taps</span><span class="value" id="m-isi">-</span></div>
-      <div class="metric"><span class="label">BER (no EQ)</span><span class="value" id="m-ber-noeq">-</span></div>
-      <div class="metric"><span class="label">BER (with EQ)</span><span class="value" id="m-ber-eq">-</span></div>
+      <div class="metric"><span class="label">EVM (no EQ)</span><span class="value" id="m-evm-noeq">-</span></div>
+      <div class="metric"><span class="label">EVM (with EQ)</span><span class="value" id="m-evm-eq">-</span></div>
     </div>
     <div class="info-box">
       <strong>ZF:</strong> forces ISI to zero but amplifies noise at channel nulls.<br>
@@ -379,21 +379,20 @@ function update(){
     equalizedReal=applyFIR(received,w);
   }
 
-  // BER estimation
+  // EVM estimation (Error Vector Magnitude, %)
   const delay=w?Math.floor(Leq/2):0;
-  let errNoEq=0,errEq=0,nCount=0;
+  let sumSqNoEq=0,sumSqEq=0,nCount=0;
   for(let n=delay;n<Nsym-delay;n++){
     const ref=txReal[n-delay];
-    const decNoEq=received[n]>=0?1:-1;
-    const decEq=equalizedReal[n]>=0?1:-1;
-    if(isBpsk){
-      if(decNoEq!==ref)errNoEq++;
-      if(decEq!==ref)errEq++;
-    }
+    sumSqNoEq+=(received[n]-ref)**2;
+    sumSqEq+=(equalizedReal[n]-ref)**2;
     nCount++;
   }
-  document.getElementById('m-ber-noeq').textContent=nCount>0?(errNoEq/nCount).toFixed(3):'N/A';
-  document.getElementById('m-ber-eq').textContent=nCount>0?(errEq/nCount).toFixed(3):'N/A';
+  const refPow=isBpsk?1:0.5; // reference symbol power
+  const evmNoEq=nCount>0?Math.sqrt(sumSqNoEq/nCount/refPow)*100:0;
+  const evmEq=nCount>0?Math.sqrt(sumSqEq/nCount/refPow)*100:0;
+  document.getElementById('m-evm-noeq').textContent=evmNoEq.toFixed(1)+'%';
+  document.getElementById('m-evm-eq').textContent=evmEq.toFixed(1)+'%';
 
   // ---------- Plot 3: Eye diagram ----------
   const Teye=2; // symbols per eye trace
@@ -427,52 +426,77 @@ function update(){
     legend:{font:{size:9},x:0.6,y:1}
   },{responsive:true});
 
-  // ---------- Plot 4: Constellation + BER vs SNR ----------
-  // Scatter constellation
-  const constTraces=[];
-  const rxI_pre=received.slice(0,100);
-  const rxI_post=equalizedReal.slice(0,100);
-
-  // BER vs SNR curves
-  const snrRange=Array.from({length:41},(_,i)=>i); // 0..40 dB
-  const berIdeal=snrRange.map(s=>qFunc(Math.sqrt(2*Math.pow(10,s/10))));
-
-  // Approximate BER after equalization: treat as AWGN with effective SNR
-  // ZF: noise enhancement = 1/mean(|H(f)|^2) roughly
-  const Hmag2=H.mag.slice(0,Nfft/2);
-  const meanH2=Hmag2.reduce((s,v)=>s+v*v,0)/(Nfft/2);
-  const meanH2inv=Hmag2.reduce((s,v)=>s+1/Math.max(v*v,0.01),0)/(Nfft/2);
-
-  const berNoEq=snrRange.map(s=>{
-    // channel with ISI: approximate as flat fading at mean power
-    const sLin=Math.pow(10,s/10);
-    const sinrApprox=sLin*meanH2/(1+sLin*(1-meanH2));
-    return qFunc(Math.sqrt(2*sinrApprox));
-  });
-  const berZF=snrRange.map(s=>{
-    const sLin=Math.pow(10,s/10);
-    const effSnr=sLin/meanH2inv; // ZF noise enhancement
-    return qFunc(Math.sqrt(2*effSnr));
-  });
-  const berMMSE=snrRange.map(s=>{
-    const sLin=Math.pow(10,s/10);
-    // MMSE: better than ZF, approaches ideal at high SNR
-    const effSnr=sLin*meanH2/(1+sLin*(meanH2inv-1)/(snrRange.length));
-    return qFunc(Math.sqrt(2*Math.max(effSnr,0.01)));
-  });
-
-  Plotly.react('plot-ber',[
-    {x:snrRange,y:berIdeal,mode:'lines',line:{color:'#4ade80',width:2,dash:'dash'},name:'AWGN (no ISI)'},
-    {x:snrRange,y:berNoEq,mode:'lines',line:{color:'#ef4444',width:2},name:'No EQ (ISI floor)'},
-    {x:snrRange,y:berZF,mode:'lines',line:{color:'#facc15',width:2},name:'ZF (noise enhance)'},
-    {x:snrRange,y:berMMSE,mode:'lines',line:{color:'#60a5fa',width:2},name:'MMSE (optimal)'},
-    {x:[snrDb],y:[errEq/Math.max(nCount,1)],mode:'markers',marker:{color:'#ffffff',size:10,symbol:'star'},name:'Current'},
-  ],{...lo,
-    title:{text:'BER vs SNR — Equalization Comparison',font:{size:13}},
-    xaxis:{...lo.xaxis,title:'SNR (dB)',range:[0,40]},
-    yaxis:{...lo.yaxis,title:'BER',type:'log',range:[-4,0]},
-    legend:{font:{size:9},x:0.45,y:1}
-  },{responsive:true});
+  // ---------- Plot 4: Constellation Diagram (Before vs After Equalization) ----------
+  var constTraces=[];
+  var Nshow=Math.min(200,Nsym-2*delay);
+  if(isBpsk){
+    // BPSK: 1D scatter with jitter for visibility
+    var rxBefore=[],rxAfter=[],jitBefore=[],jitAfter=[];
+    for(var ci=0;ci<Nshow;ci++){
+      var ni=ci+delay;
+      rxBefore.push(received[ni]);
+      rxAfter.push(equalizedReal[ni]);
+      jitBefore.push((Math.random()-0.5)*0.3);
+      jitAfter.push((Math.random()-0.5)*0.3);
+    }
+    constTraces.push({x:rxBefore,y:jitBefore,mode:'markers',marker:{color:'#ef4444',size:5,opacity:0.5},name:'Before EQ'});
+    constTraces.push({x:rxAfter,y:jitAfter,mode:'markers',marker:{color:'#60a5fa',size:5,opacity:0.6},name:'After '+eqLabel});
+    // Ideal constellation points
+    constTraces.push({x:[-1,1],y:[0,0],mode:'markers',marker:{color:'#4ade80',size:14,symbol:'diamond',line:{color:'#fff',width:1.5}},name:'Ideal (\u00b11)'});
+    // Decision boundary
+    constTraces.push({x:[0,0],y:[-0.5,0.5],mode:'lines',line:{color:'#facc15',width:2,dash:'dash'},name:'Decision boundary'});
+    Plotly.react('plot-ber',constTraces,{...lo,
+      title:{text:'Constellation: Before vs After Equalization (BPSK)',font:{size:13}},
+      xaxis:{...lo.xaxis,title:'In-Phase (Real)',range:[-3,3]},
+      yaxis:{...lo.yaxis,title:'(jitter for visibility)',range:[-0.6,0.6]},
+      legend:{font:{size:9},x:0.55,y:1}
+    },{responsive:true});
+  } else {
+    // QPSK: 2D I/Q constellation
+    // Need I and Q components for received and equalized
+    // Re-simulate with complex signals for QPSK
+    var txI=[],txQ=[];
+    for(var ci=0;ci<Nsym;ci++){txI.push(symbols[ci].re);txQ.push(symbols[ci].im);}
+    var chI=conv(txI,h).slice(0,Nsym);
+    var chQ=conv(txQ,h).slice(0,Nsym);
+    var rxI=[],rxQ=[],eqI=[],eqQ=[];
+    for(var ci=0;ci<Nsym;ci++){
+      rxI.push(chI[ci]+noiseStd*randn());
+      rxQ.push(chQ[ci]+noiseStd*randn());
+    }
+    // Equalize I and Q independently (linear equalizer)
+    if(eqType==='none'){
+      eqI=rxI;eqQ=rxQ;
+    } else if(eqType==='dfe'){
+      var Lff2=Math.ceil(Leq*0.7)|1;
+      var Lfb2=Math.floor(Leq*0.3);
+      eqI=dfeEqualize(rxI,h,Lff2,Lfb2,snrLin,false);
+      eqQ=dfeEqualize(rxQ,h,Lff2,Lfb2,snrLin,false);
+    } else {
+      eqI=applyFIR(rxI,w);
+      eqQ=applyFIR(rxQ,w);
+    }
+    var rxIshow=[],rxQshow=[],eqIshow=[],eqQshow=[];
+    for(var ci=0;ci<Nshow;ci++){
+      var ni=ci+delay;
+      rxIshow.push(rxI[ni]);rxQshow.push(rxQ[ni]);
+      eqIshow.push(eqI[ni]);eqQshow.push(eqQ[ni]);
+    }
+    var s2=1/Math.SQRT2;
+    constTraces.push({x:rxIshow,y:rxQshow,mode:'markers',marker:{color:'#ef4444',size:5,opacity:0.45},name:'Before EQ'});
+    constTraces.push({x:eqIshow,y:eqQshow,mode:'markers',marker:{color:'#60a5fa',size:5,opacity:0.6},name:'After '+eqLabel});
+    // Ideal QPSK constellation points
+    constTraces.push({x:[-s2,s2,-s2,s2],y:[-s2,-s2,s2,s2],mode:'markers',marker:{color:'#4ade80',size:14,symbol:'diamond',line:{color:'#fff',width:1.5}},name:'Ideal QPSK'});
+    // Decision boundaries
+    constTraces.push({x:[0,0],y:[-2,2],mode:'lines',line:{color:'#facc15',width:1.5,dash:'dash'},showlegend:false});
+    constTraces.push({x:[-2,2],y:[0,0],mode:'lines',line:{color:'#facc15',width:1.5,dash:'dash'},name:'Decision boundary'});
+    Plotly.react('plot-ber',constTraces,{...lo,
+      title:{text:'Constellation: Before vs After Equalization (QPSK)',font:{size:13}},
+      xaxis:{...lo.xaxis,title:'In-Phase (I)',range:[-2.5,2.5]},
+      yaxis:{...lo.yaxis,title:'Quadrature (Q)',range:[-2.5,2.5],scaleanchor:'x'},
+      legend:{font:{size:9},x:0.55,y:1}
+    },{responsive:true});
+  }
 }
 
 ['chmodel','eqtype','mod'].forEach(id=>document.getElementById(id).addEventListener('change',update));
