@@ -86,6 +86,8 @@
 var _t=THEMES[curTheme];var plotBg=_t.plotBg,paperBg=_t.paperBg,gridColor=_t.gridColor,textColor=_t.textColor;
 var lo={paper_bgcolor:paperBg,plot_bgcolor:plotBg,font:{color:textColor,size:11},margin:{t:40,r:16,b:40,l:55},xaxis:{gridcolor:gridColor,zerolinecolor:_t.zeroLine},yaxis:{gridcolor:gridColor,zerolinecolor:_t.zeroLine}};
 
+function randn(){let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+
 const SPS=64; // samples per symbol
 
 function raisedCosine(t,T,alpha){
@@ -206,7 +208,7 @@ function update(){
     }
   }
   // Add noise
-  const noisySignal=Array.from(signal).map(v=>v+noiseStd*(Math.random()+Math.random()+Math.random()+Math.random()-2)*0.816);
+  const noisySignal=Array.from(signal).map(v=>v+noiseStd*randn());
 
   const tSig=Array.from({length:totalSamples},(_,i)=>i/SPS);
 

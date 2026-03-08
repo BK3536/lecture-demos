@@ -195,6 +195,7 @@ function update() {
   const fc = fcGHz * 1e9;
   const lambda = c / fc;
   const R0 = r0km * 1e3;
+  const T_pulse = 10e-6;  // pulse duration (10 us)
 
   // Resolutions
   const deltaR = c / (2 * B);
@@ -232,25 +233,24 @@ function update() {
   const rSpacingM = (rMax - rMin) / (NR - 1);
 
   // Build raw SAR signal: complex phase history [NA x NR]
+  const kr = B / T_pulse;  // chirp rate
   const rawRe = [], rawIm = [];
   for (let ia = 0; ia < NA; ia++) {
     const re = new Array(NR).fill(0);
     const im = new Array(NR).fill(0);
     for (const tgt of targets) {
-      const dist = Math.sqrt((tgt.r) ** 2 + (azPos[ia] - tgt.az) ** 2);
-      // Range gate of this target
-      const tDelay = 2 * dist / c;
-      const rSample = (dist - rMin) / rSpacingM;
-      if (rSample < 0 || rSample >= NR - 1) continue;
-
-      // Sinc-like range envelope (simulate chirp return)
+      const dist = Math.sqrt(tgt.r ** 2 + (azPos[ia] - tgt.az) ** 2);
+      const tDelay = 2 * dist / c;  // round-trip delay
+      // Chirp return: s(t) = exp(j*pi*kr*(t - 2R/c)^2) * exp(-j*2*pi*fc*2R/c)
       for (let ir = 0; ir < NR; ir++) {
-        const rDiff = (rAxis[ir] - dist) / deltaR;
-        const envelope = Math.abs(rDiff) < 3 ? Math.sin(Math.PI * rDiff + 1e-10) / (Math.PI * rDiff + 1e-10) : 0;
-        // Phase: 4pi*R/lambda
-        const phase = -4 * Math.PI * dist / lambda;
-        re[ir] += envelope * Math.cos(phase);
-        im[ir] += envelope * Math.sin(phase);
+        const tFast = 2 * rAxis[ir] / c;    // fast-time sample
+        const dt = tFast - tDelay;           // time relative to echo center
+        if (Math.abs(dt) > T_pulse / 2) continue; // outside pulse width
+        const chirpPhase = Math.PI * kr * dt * dt;
+        const carrierPhase = -4 * Math.PI * fc * dist / c;
+        const phase = chirpPhase + carrierPhase;
+        re[ir] += Math.cos(phase);
+        im[ir] += Math.sin(phase);
       }
     }
     rawRe.push(re);
@@ -270,16 +270,33 @@ function update() {
   const rcIm = rawIm.map(row => [...row]);
 
   if (doRC) {
-    // Chirp matched filter in freq domain for each azimuth line
+    // Generate reference chirp and compute its conjugate spectrum (once)
+    const refRe = new Array(NR).fill(0);
+    const refIm = new Array(NR).fill(0);
+    for (let ir = 0; ir < NR; ir++) {
+      const tFast = 2 * rAxis[ir] / c;
+      const tRef = tFast - 2 * R0 / c;  // centered at scene center
+      if (Math.abs(tRef) <= T_pulse / 2) {
+        const phase = Math.PI * kr * tRef * tRef;
+        refRe[ir] = Math.cos(phase);
+        refIm[ir] = Math.sin(phase);
+      }
+    }
+    // FFT of reference chirp
+    fft(refRe, refIm);
+    // Conjugate of reference spectrum (matched filter kernel)
+    for (let k = 0; k < NR; k++) refIm[k] = -refIm[k];
+
+    // Apply matched filter to each azimuth line
     for (let ia = 0; ia < NA; ia++) {
       const re = rcRe[ia], im = rcIm[ia];
       fft(re, im);
-      // Matched filter = conjugate of chirp spectrum (for range compression, apply freq domain multiply)
-      // Here we just do amplitude weighting (Hanning) to simulate pulse compression
-      const N = re.length;
-      for (let k = 0; k < N; k++) {
-        const hann = 0.5 - 0.5 * Math.cos(2 * Math.PI * k / (N - 1));
-        re[k] *= hann; im[k] *= hann;
+      // Multiply by conjugate of reference spectrum
+      for (let k = 0; k < NR; k++) {
+        const newRe = re[k] * refRe[k] - im[k] * refIm[k];
+        const newIm = re[k] * refIm[k] + im[k] * refRe[k];
+        re[k] = newRe;
+        im[k] = newIm;
       }
       ifft(re, im);
     }
@@ -376,7 +393,7 @@ function update() {
     zmin: -30, zmax: 0
   }], {
     ...lo,
-    title: { text: `PSF &mdash; &Delta;r=${deltaR.toFixed(1)}m, &Delta;az=${deltaAz.toFixed(1)}m`, font: { size: 13 } },
+    title: { text: `PSF \u2014 \u0394r=${deltaR.toFixed(1)}m, \u0394az=${deltaAz.toFixed(1)}m`, font: { size: 13 } },
     xaxis: { ...lo.xaxis, title: 'Range (samples)' },
     yaxis: { ...lo.yaxis, title: 'Azimuth (samples)' },
     shapes: [{

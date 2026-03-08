@@ -178,7 +178,7 @@ function update(){
     filterResp=fNorm.map(f=>{
       let re=0,im=0;
       for(let k=0;k<h.length;k++){
-        const ang=-2*Math.PI*(f+0.5)*k; // shift to center
+        const ang=-2*Math.PI*f*k;
         re+=h[k]*Math.cos(ang);im+=h[k]*Math.sin(ang);
       }
       return 20*Math.log10(Math.sqrt(re*re+im*im)+1e-10);
@@ -187,11 +187,11 @@ function update(){
     // FFT filter bank: show response of all Np filters (use the one at target Doppler)
     filterResp=fNorm.map(f=>{
       // Windowed sinc-like response of a single Doppler bin
-      const fdBin=Math.round((fdTarget/prf+0.5)*Np)%Np;
+      const fdBin=((Math.round(fdTarget/prf*Np)%Np)+Np)%Np;
       let re=0,im=0;
       for(let m=0;m<Np;m++){
         const win=0.5*(1-Math.cos(2*Math.PI*m/Np));
-        const ang=2*Math.PI*((f+0.5)*Np-fdBin)*m/Np;
+        const ang=2*Math.PI*(f*Np-fdBin)*m/Np;
         re+=win*Math.cos(ang);im+=win*Math.sin(ang);
       }
       return 20*Math.log10(Math.sqrt(re*re+im*im)/Np+1e-10);
@@ -205,7 +205,7 @@ function update(){
 
   // Improvement factor
   const tgtFnorm=fdTarget/prf;
-  const tgtIdx=Math.round((tgtFnorm+0.5)*Nresp)%Nresp;
+  const tgtIdx=Math.round((tgtFnorm+0.5)*Nresp+Nresp)%Nresp;
   const tgtGain=filterResp[tgtIdx];
   document.getElementById('m-imp').textContent=(clutterRej+tgtGain).toFixed(1);
 

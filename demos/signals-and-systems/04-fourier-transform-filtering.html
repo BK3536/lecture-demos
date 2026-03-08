@@ -87,59 +87,77 @@ const FS = 2000, N = 2048, T = N / FS;
 const t = Array.from({length:N},(_,i)=>i/FS);
 const freqs = Array.from({length:N/2},(_,i)=>i*FS/N);
 
+// Cached noise array — generated once, refreshed only on signal-type change
+var cachedNoise = null;
+function ensureNoise() {
+  if (!cachedNoise) { cachedNoise = Array.from({length:N},()=>0.5*(Math.random()-0.5)); }
+  return cachedNoise;
+}
+
 function generateSignal(type) {
   switch(type) {
     case 'multi': return t.map(v => 0.7*Math.sin(2*Math.PI*50*v) + 1.0*Math.sin(2*Math.PI*200*v) + 0.5*Math.sin(2*Math.PI*450*v));
     case 'chirp': return t.map(v => Math.sin(2*Math.PI*(50*v + 225*v*v)));
     case 'square': { const f=80; return t.map(v => Math.sign(Math.sin(2*Math.PI*f*v))); }
-    case 'noisy-sine': return t.map(v => Math.sin(2*Math.PI*100*v) + 0.5*(Math.random()-0.5));
+    case 'noisy-sine': { var noise = ensureNoise(); return t.map((v,i) => Math.sin(2*Math.PI*100*v) + noise[i]); }
   }
 }
 
-function fft(x) {
-  const n = x.length;
-  if (n <= 1) return x.map(v => [v, 0]);
-  if (n & (n-1)) { // not power of 2, use DFT
-    const X = [];
-    for (let k = 0; k < n; k++) {
-      let re = 0, im = 0;
-      for (let j = 0; j < n; j++) {
-        const ang = -2*Math.PI*k*j/n;
-        re += x[j]*Math.cos(ang);
-        im += x[j]*Math.sin(ang);
-      }
-      X.push([re, im]);
+// In-place radix-2 FFT on complex arrays (Cooley-Tukey, iterative)
+function fftComplex(re, im) {
+  var n = re.length;
+  // Bit-reversal permutation
+  for (var i = 1, j = 0; i < n; i++) {
+    var bit = n >> 1;
+    for (; j & bit; bit >>= 1) { j ^= bit; }
+    j ^= bit;
+    if (i < j) {
+      var tmp = re[i]; re[i] = re[j]; re[j] = tmp;
+      tmp = im[i]; im[i] = im[j]; im[j] = tmp;
     }
-    return X;
   }
-  const even = fft(x.filter((_,i)=>i%2===0));
-  const odd = fft(x.filter((_,i)=>i%2===1));
-  const X = new Array(n);
-  for (let k = 0; k < n/2; k++) {
-    const ang = -2*Math.PI*k/n;
-    const tre = Math.cos(ang)*odd[k][0] - Math.sin(ang)*odd[k][1];
-    const tim = Math.cos(ang)*odd[k][1] + Math.sin(ang)*odd[k][0];
-    X[k] = [even[k][0]+tre, even[k][1]+tim];
-    X[k+n/2] = [even[k][0]-tre, even[k][1]-tim];
+  // Butterfly
+  for (var len = 2; len <= n; len <<= 1) {
+    var halfLen = len >> 1;
+    var ang = -2 * Math.PI / len;
+    var wRe = Math.cos(ang), wIm = Math.sin(ang);
+    for (var i = 0; i < n; i += len) {
+      var curRe = 1, curIm = 0;
+      for (var k = 0; k < halfLen; k++) {
+        var idx = i + k, jdx = idx + halfLen;
+        var tRe = curRe * re[jdx] - curIm * im[jdx];
+        var tIm = curRe * im[jdx] + curIm * re[jdx];
+        re[jdx] = re[idx] - tRe; im[jdx] = im[idx] - tIm;
+        re[idx] += tRe;           im[idx] += tIm;
+        var newCurRe = curRe * wRe - curIm * wIm;
+        curIm = curRe * wIm + curIm * wRe;
+        curRe = newCurRe;
+      }
+    }
   }
+}
+
+// FFT for real-valued input, returns array of [re, im] pairs
+function fft(x) {
+  var n = x.length;
+  var re = new Float64Array(n);
+  var im = new Float64Array(n);
+  for (var i = 0; i < n; i++) re[i] = x[i];
+  fftComplex(re, im);
+  var X = new Array(n);
+  for (var i = 0; i < n; i++) X[i] = [re[i], im[i]];
   return X;
 }
 
+// O(N log N) IFFT: ifft(X) = conj(fft(conj(X))) / N
 function ifft(X) {
-  const n = X.length;
-  const conj = X.map(([r,i])=>[r,-i]);
-  const flat = conj.map(c=>c[0]);
-  // use fft on conjugated real parts won't work generally; do direct IDFT for small N
-  // Actually let's use proper IDFT
-  const x = [];
-  for (let j = 0; j < n; j++) {
-    let re = 0;
-    for (let k = 0; k < n; k++) {
-      const ang = 2*Math.PI*k*j/n;
-      re += X[k][0]*Math.cos(ang) - X[k][1]*Math.sin(ang);
-    }
-    x.push(re/n);
-  }
+  var n = X.length;
+  var re = new Float64Array(n);
+  var im = new Float64Array(n);
+  for (var i = 0; i < n; i++) { re[i] = X[i][0]; im[i] = -X[i][1]; } // conjugate input
+  fftComplex(re, im);
+  var x = new Array(n);
+  for (var i = 0; i < n; i++) x[i] = re[i] / n; // conjugate output & divide (imag ~0 for real result)
   return x;
 }
 
@@ -256,7 +274,8 @@ function update() {
   ], {...lo,title:{text:'Output Spectrum |Y(f)| = |H(f)||X(f)|',font:{size:13}},xaxis:{...lo.xaxis,title:'Frequency (Hz)',range:[0,FS/2]},yaxis:{...lo.yaxis,title:'Magnitude'},legend:{x:0.7,y:1}},{responsive:true});
 }
 
-['signal','ftype'].forEach(id=>document.getElementById(id).addEventListener('change',update));
+document.getElementById('signal').addEventListener('change', function(){ cachedNoise = null; update(); });
+document.getElementById('ftype').addEventListener('change', update);
 ['fc','order','bw'].forEach(id=>document.getElementById(id).addEventListener('input',update));
 update();
 </script>

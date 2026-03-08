@@ -174,7 +174,7 @@ function periodogram(x) {
   const nBins = Math.floor(Nfft/2)+1;
   const df = FS/Nfft;
   const freq = Array.from({length:nBins},(_,i)=>i*df);
-  const psd = Array.from({length:nBins},(_,i)=>(re[i]**2+im[i]**2)/N);
+  const psd = Array.from({length:nBins},(_,i)=>(re[i]**2+im[i]**2)*2/N);
   psd[0]/=2; if(Nfft%2===0) psd[nBins-1]/=2;
   return {freq, psd};
 }
@@ -196,7 +196,7 @@ function welch(x, segLen=null) {
   for (let start=0; start+segLen<=N; start+=hop) {
     const seg = Array.from({length:segLen},(_,i)=>x[start+i]*win[i]);
     const {re,im,N:Nf}=fft(seg);
-    for (let k=0;k<nBins;k++) psdSum[k]+=(re[k]**2+im[k]**2)/(segLen*winPow);
+    for (let k=0;k<nBins;k++) psdSum[k]+=(re[k]**2+im[k]**2)*2/(segLen*winPow);
     nSegs++;
   }
   if (nSegs===0) return periodogram(x);

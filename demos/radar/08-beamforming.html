@@ -199,7 +199,9 @@ function update() {
   document.getElementById('m-bw3').textContent = bw3.toFixed(1) + '\u00B0';
   document.getElementById('m-fnbw').textContent = fnbw > 0 ? fnbw.toFixed(1) + '\u00B0' : '—';
   document.getElementById('m-sll').textContent = sll.toFixed(1) + ' dB';
-  document.getElementById('m-gain').textContent = (10 * Math.log10(N)).toFixed(1) + ' dBi (ideal)';
+  const wPow = weights.reduce((s,v) => s+v*v, 0);
+  const arrayGain = 10 * Math.log10(wSum*wSum / (N * wPow));
+  document.getElementById('m-gain').textContent = arrayGain.toFixed(1) + ' dBi';
   const grEl = document.getElementById('m-grating');
   grEl.textContent = hasGrating ? 'YES (d/\u03BB too large!)' : 'None';
   grEl.className = 'value' + (hasGrating ? ' bad' : '');

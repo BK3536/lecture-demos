@@ -194,7 +194,7 @@ function update(){
       const eps=0.02*u;
       gridTraces.push({
         x:[eps,1-eps,1-eps,eps,eps],
-        y:[eps*bw,(eps)*bw,(1-eps)*bw+eps*bw,(1-eps)*bw+eps*bw,eps*bw],
+        y:[eps*bw,eps*bw,(1-eps)*bw,(1-eps)*bw,eps*bw],
         type:'scatter',mode:'lines',
         fill:'toself',fillcolor:USER_COLORS[u]+'22',
         line:{color:USER_COLORS[u],width:1.5},
@@ -381,7 +381,7 @@ function update(){
   const flexibility=[70, 50, 60, 95]; // qualitative score
 
   Plotly.react('plot-eff',[
-    {x:techniques,y:specEff,type:'bar',name:'Spectral Eff (%)',marker:{color:techniques.map((t,i)=>i===techniques.indexOf(tech)?'#60a5fa':'#3b82f6'+'88')},offsetgroup:0},
+    {x:techniques,y:specEff,type:'bar',name:'Spectral Eff (%)',marker:{color:techniques.map((t,i)=>i===techniques.indexOf(tech)?'#60a5fa':'#3b82f688')},offsetgroup:0},
     {x:techniques,y:guardOverhead,type:'bar',name:'Guard Overhead (%)',marker:{color:'#ef444488'},offsetgroup:1},
     {x:techniques,y:flexibility,type:'bar',name:'Flexibility Score',marker:{color:'#4ade8066'},offsetgroup:2},
   ],{...lo,

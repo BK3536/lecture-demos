@@ -186,16 +186,17 @@ function update() {
 
   // Plot 4: Compare common systems
   const systems = [
-    {name:'WiFi 2.4G', f:2.4, pt:20, gt:3, gr:3, bw:20, color:'#60a5fa'},
-    {name:'WiFi 5G', f:5.8, pt:20, gt:5, gr:3, bw:40, color:'#4ade80'},
-    {name:'5G mmWave', f:28, pt:30, gt:20, gr:10, bw:100, color:'#facc15'},
-    {name:'LTE', f:1.8, pt:43, gt:15, gr:0, bw:10, color:'#f472b6'},
-    {name:'Current', f:freq, pt:pt, gt:gt, gr:gr, bw:bw, color:'#a78bfa'},
+    {name:'WiFi 2.4G', f:2.4, pt:20, gt:3, gr:3, bw:20, nf:6, n:2, color:'#60a5fa'},
+    {name:'WiFi 5G', f:5.8, pt:20, gt:5, gr:3, bw:40, nf:6, n:2, color:'#4ade80'},
+    {name:'5G mmWave', f:28, pt:30, gt:20, gr:10, bw:100, nf:7, n:2, color:'#facc15'},
+    {name:'LTE', f:1.8, pt:43, gt:15, gr:0, bw:10, nf:3, n:2, color:'#f472b6'},
+    {name:'Satellite', f:12, pt:40, gt:35, gr:20, bw:36, nf:1.5, n:2, color:'#34d399'},
+    {name:'Current', f:freq, pt:pt, gt:gt, gr:gr, bw:bw, nf:nf, n:ple, color:'#a78bfa'},
   ];
   const sysTraces = systems.map(sys => {
     const snrs = dists.map(d => {
-      const p = fspl(d*1000, sys.f*1e9, 2) ;
-      const nFloor = -174 + 10*Math.log10(sys.bw*1e6) + nf;
+      const p = fspl(d*1000, sys.f*1e9, sys.n) ;
+      const nFloor = -174 + 10*Math.log10(sys.bw*1e6) + sys.nf;
       return sys.pt + sys.gt - p + sys.gr - nFloor;
     });
     return {x:dists,y:snrs,mode:'lines',line:{color:sys.color,width:sys.name==='Current'?3:1.5,dash:sys.name==='Current'?'solid':'dot'},name:sys.name};

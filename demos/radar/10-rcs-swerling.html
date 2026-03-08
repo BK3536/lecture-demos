@@ -173,7 +173,7 @@ function rcsVsFreq(shape, a) {
       case 'sphere': {
         if (ka < 1) return Math.PI * a * a * Math.pow(ka, 4) * 9; // Rayleigh: ~f^4
         if (ka > 10) return Math.PI * a * a * (1 + 0.1 * Math.sin(2 * ka)); // optical with ripple
-        return Math.PI * a * a * (0.5 + 0.5 * Math.sin(ka)); // resonance
+        return Math.PI * a * a * (1 + 0.3 * Math.sin(2 * ka)); // resonance: bounded Mie oscillation
       }
       case 'plate': {
         const A = Math.PI * a * a;
@@ -231,23 +231,32 @@ function pdNonFluc(snrLin, N, pfa) {
   return 0.5 * erfc(z / Math.sqrt(2));
 }
 
-// Shnidman approximation for Swerling Pd
+// Swerling Pd via SNR loss factor relative to non-fluctuating (SW0).
+// Compute Pd(SNR) = pdNonFluc(SNR_dB - swLoss_dB, N, Pfa) where swLoss_dB
+// is the model-dependent SNR penalty from standard radar detection theory.
 function pdSwerling(model, snrLin, N, pfa) {
   model = +model;
   if (model === 0) return pdNonFluc(snrLin, N, pfa);
 
-  // Use the Albersheim approximation adjusted for Swerling models
-  // SNR penalty factors relative to Swerling 0
-  // Approximate: SW I/II require ~10*log10(N) more SNR at high Pd
-  // Use empirical correction
-  let snrEff;
+  // Approximate SNR penalties (dB) relative to non-fluctuating target.
+  // SW I  (scan-to-scan, chi-sq 2 DOF): largest loss, slow decorrelation
+  // SW II (pulse-to-pulse, chi-sq 2 DOF): diversity gain reduces loss
+  // SW III(scan-to-scan, chi-sq 4 DOF): dominant scatterer, less spread
+  // SW IV (pulse-to-pulse, chi-sq 4 DOF): best fluctuating case
+  var sqrtN = Math.sqrt(N);
+  var swLoss;
   switch (model) {
-    case 1: snrEff = snrLin / (1 + snrLin); break; // slow fluctuation, N pulses don't help as much
-    case 2: snrEff = snrLin * N / (1 + snrLin); break; // fast: pulses help
-    case 3: snrEff = snrLin / (1 + 0.5 * snrLin); break;
-    case 4: snrEff = snrLin * Math.sqrt(N) / (1 + 0.5 * snrLin); break;
+    case 1: swLoss = 3 + 5.5 / sqrtN; break;
+    case 2: swLoss = 1.5 + 2 / sqrtN; break;
+    case 3: swLoss = 1.5 + 3 / sqrtN; break;
+    case 4: swLoss = 0.5 + 1 / sqrtN; break;
   }
-  return pdNonFluc(snrEff, N, pfa);
+
+  // Shift SNR by loss: convert to dB, subtract penalty, convert back to linear
+  var snrDb = 10 * Math.log10(snrLin + 1e-30);
+  var snrEffDb = snrDb - swLoss;
+  var snrEffLin = Math.pow(10, snrEffDb / 10);
+  return pdNonFluc(snrEffLin, N, pfa);
 }
 
 function erfInv(x) {
