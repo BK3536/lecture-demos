@@ -156,7 +156,6 @@ function update(){
   const Hmag=Array.from({length:Nsc},(_,k)=>Math.sqrt(Hre[k]**2+Him[k]**2));
 
   // Generate random symbols
-  const nOFDM=10; // OFDM symbols for statistics
   let errCP=0,errNoCP=0,totalSym=0;
   const rxConstCP_I=[],rxConstCP_Q=[],rxConstNoCP_I=[],rxConstNoCP_Q=[];
   const txConstI=[],txConstQ=[];
@@ -167,56 +166,74 @@ function update(){
   // Store first OFDM symbol for time-domain plot
   let firstTxRe,firstTxIm,firstRxRe,firstRxIm;
 
-  for(let sym=0;sym<nOFDM;sym++){
-    // Random data symbols on each subcarrier
+  // Generate all OFDM symbols first
+  const nOFDMsym=20;
+  const allData=[];  // [{Xre, Xim, dataIdx}, ...]
+  const allTx=[];    // [{re, im}, ...]
+  for(let sym=0;sym<nOFDMsym;sym++){
     const dataIdx=Array.from({length:Nsc},()=>Math.floor(Math.random()*M));
     const Xre=new Float64Array(Nsc),Xim=new Float64Array(Nsc);
     dataIdx.forEach((idx,k)=>{Xre[k]=constellation[idx].I;Xim[k]=constellation[idx].Q;});
-
-    // IFFT -> time domain
     const tx=ifft(Xre,Xim);
-
+    allData.push({Xre,Xim,dataIdx});
+    allTx.push(tx);
     if(sym===0){firstTxRe=Array.from(tx.re);firstTxIm=Array.from(tx.im);}
+  }
 
-    // --- WITH CP ---
-    const txCP_re=new Float64Array(cpLen+Nsc);
-    const txCP_im=new Float64Array(cpLen+Nsc);
-    for(let i=0;i<cpLen;i++){txCP_re[i]=tx.re[Nsc-cpLen+i];txCP_im[i]=tx.im[Nsc-cpLen+i];}
-    for(let i=0;i<Nsc;i++){txCP_re[cpLen+i]=tx.re[i];txCP_im[cpLen+i]=tx.im[i];}
+  // ─── WITH CP: concatenate CP+symbol stream, convolve once ───
+  const symLenCP=cpLen+Nsc;
+  const streamCPre=new Float64Array(nOFDMsym*symLenCP);
+  const streamCPim=new Float64Array(nOFDMsym*symLenCP);
+  for(let s=0;s<nOFDMsym;s++){
+    const off=s*symLenCP;
+    const tx=allTx[s];
+    for(let i=0;i<cpLen;i++){streamCPre[off+i]=tx.re[Nsc-cpLen+i];streamCPim[off+i]=tx.im[Nsc-cpLen+i];}
+    for(let i=0;i<Nsc;i++){streamCPre[off+cpLen+i]=tx.re[i];streamCPim[off+cpLen+i]=tx.im[i];}
+  }
+  const rxStreamCP=convReIm(Array.from(streamCPre),Array.from(streamCPim),hRe,hIm);
 
-    // Channel convolution
-    const rxFull=convReIm(Array.from(txCP_re),Array.from(txCP_im),hRe,hIm);
-    // Remove CP and take N samples
+  // ─── WITHOUT CP: concatenate raw symbols, convolve once ───
+  const streamNoCPre=new Float64Array(nOFDMsym*Nsc);
+  const streamNoCPim=new Float64Array(nOFDMsym*Nsc);
+  for(let s=0;s<nOFDMsym;s++){
+    const off=s*Nsc;
+    const tx=allTx[s];
+    for(let i=0;i<Nsc;i++){streamNoCPre[off+i]=tx.re[i];streamNoCPim[off+i]=tx.im[i];}
+  }
+  const rxStreamNoCP=convReIm(Array.from(streamNoCPre),Array.from(streamNoCPim),hRe,hIm);
+
+  // ─── Demodulate each symbol ───
+  for(let sym=0;sym<nOFDMsym;sym++){
+    const {Xre,Xim,dataIdx}=allData[sym];
+
+    // With CP: extract after removing CP
+    const cpOff=sym*symLenCP+cpLen;
     const rxRe_cp=new Float64Array(Nsc),rxIm_cp=new Float64Array(Nsc);
     for(let i=0;i<Nsc;i++){
-      rxRe_cp[i]=(rxFull.re[cpLen+i]||0)+noiseStd*randn();
-      rxIm_cp[i]=(rxFull.im[cpLen+i]||0)+noiseStd*randn();
+      rxRe_cp[i]=(rxStreamCP.re[cpOff+i]||0)+noiseStd*randn();
+      rxIm_cp[i]=(rxStreamCP.im[cpOff+i]||0)+noiseStd*randn();
     }
-
     if(sym===0){firstRxRe=Array.from(rxRe_cp);firstRxIm=Array.from(rxIm_cp);}
 
-    // FFT
     const Ycp=fft(rxRe_cp,rxIm_cp);
-    // 1-tap equalization
     for(let k=0;k<Nsc;k++){
       const den=Hre[k]**2+Him[k]**2+1e-10;
       const eqRe=(Ycp.re[k]*Hre[k]+Ycp.im[k]*Him[k])/den;
       const eqIm=(Ycp.im[k]*Hre[k]-Ycp.re[k]*Him[k])/den;
       rxConstCP_I.push(eqRe);rxConstCP_Q.push(eqIm);
       txConstI.push(Xre[k]);txConstQ.push(Xim[k]);
-      // Detect
       let minD=Infinity,bestJ=0;
       for(let j=0;j<M;j++){const d=(eqRe-constellation[j].I)**2+(eqIm-constellation[j].Q)**2;if(d<minD){minD=d;bestJ=j;}}
       if(bestJ!==dataIdx[k])errCP++;
       totalSym++;
     }
 
-    // --- WITHOUT CP ---
-    const rxNoCP=convReIm(Array.from(tx.re),Array.from(tx.im),hRe,hIm);
+    // Without CP: extract N samples (ISI from previous symbol leaks in)
+    const ncpOff=sym*Nsc;
     const rxRe_nocp=new Float64Array(Nsc),rxIm_nocp=new Float64Array(Nsc);
     for(let i=0;i<Nsc;i++){
-      rxRe_nocp[i]=(rxNoCP.re[i]||0)+noiseStd*randn();
-      rxIm_nocp[i]=(rxNoCP.im[i]||0)+noiseStd*randn();
+      rxRe_nocp[i]=(rxStreamNoCP.re[ncpOff+i]||0)+noiseStd*randn();
+      rxIm_nocp[i]=(rxStreamNoCP.im[ncpOff+i]||0)+noiseStd*randn();
     }
     const Ynocp=fft(rxRe_nocp,rxIm_nocp);
     for(let k=0;k<Nsc;k++){
