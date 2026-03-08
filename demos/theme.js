@@ -27,7 +27,7 @@ function _refreshGlobalColors() {
   if (typeof gridColor !== 'undefined') { gridColor = t.gridColor; }
   if (typeof textColor !== 'undefined') { textColor = t.textColor; }
   if (typeof lo !== 'undefined' && lo) {
-    lo.paper_bgcolor = t.plotBg;
+    lo.paper_bgcolor = t.paperBg;
     lo.plot_bgcolor = t.plotBg;
     if (lo.font) lo.font.color = t.textColor;
     if (lo.xaxis) { lo.xaxis.gridcolor = t.gridColor; lo.xaxis.zerolinecolor = t.zeroLine; }
