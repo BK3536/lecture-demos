@@ -115,8 +115,46 @@ function _injectFullscreenButton() {
   _updateFullscreenIcon();
 }
 
+/* ── Mobile controls toggle ──────────────────────────── */
+function toggleMobileControls() {
+  var controls = document.querySelector('.controls');
+  if (!controls) return;
+  controls.classList.toggle('mobile-open');
+  _updateMobileToggleIcon();
+  // Resize plots after controls expand/collapse
+  setTimeout(function() {
+    if (typeof Plotly !== 'undefined') {
+      document.querySelectorAll('.plot').forEach(function(el) {
+        if (el.data) try { Plotly.Plots.resize(el); } catch(e) {}
+      });
+    }
+  }, 350);
+}
+
+function _updateMobileToggleIcon() {
+  var btn = document.querySelector('.mobile-controls-toggle');
+  if (!btn) return;
+  var open = document.querySelector('.controls.mobile-open');
+  btn.innerHTML = open
+    ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>'
+    : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>';
+  btn.title = open ? 'Hide controls' : 'Show controls';
+}
+
+function _injectMobileControlsToggle() {
+  var header = document.querySelector('.header');
+  var themeBtn = document.querySelector('.theme-toggle');
+  if (!header || !themeBtn || !document.querySelector('.controls')) return;
+  var btn = document.createElement('button');
+  btn.className = 'mobile-controls-toggle';
+  btn.onclick = toggleMobileControls;
+  header.insertBefore(btn, themeBtn);
+  _updateMobileToggleIcon();
+}
+
 /* ── Set icons on load ───────────────────────────────── */
 document.addEventListener('DOMContentLoaded', function() {
   _updateToggleIcon();
   _injectFullscreenButton();
+  _injectMobileControlsToggle();
 });
