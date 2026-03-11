@@ -8,175 +8,529 @@
 <link rel="stylesheet" href="theme.css?v=2">
 <title>Interactive Lecture Demos — REMI Lab</title>
 <style>
+  :root {
+    --page-max: 1200px;
+    --blue-50: #eff6ff;
+    --blue-100: #dbeafe;
+    --blue-200: #bfdbfe;
+    --blue-600: #2563eb;
+    --blue-700: #1d4ed8;
+    --blue-800: #1e40af;
+    --blue-900: #1e3a8a;
+    --slate-50: #f8fafc;
+    --slate-100: #f1f5f9;
+    --slate-200: #e2e8f0;
+    --slate-400: #94a3b8;
+    --slate-500: #64748b;
+    --slate-700: #334155;
+    --slate-900: #0f172a;
+    --shadow-soft: 0 18px 48px rgba(15, 23, 42, 0.08);
+    --shadow-card: 0 10px 28px rgba(15, 23, 42, 0.06);
+  }
+
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Pretendard', 'Inter', system-ui, -apple-system, sans-serif; background: var(--bg-body, #111827); color: var(--text-primary, #d1d5db); min-height: 100vh; }
 
-  /* ── Hero ──────────────────────────────────────── */
+  body {
+    font-family: 'Pretendard', 'Inter', system-ui, -apple-system, sans-serif;
+    background:
+      radial-gradient(circle at top, rgba(59, 130, 246, 0.10), transparent 32%),
+      linear-gradient(180deg, var(--bg-body, #f8fafc) 0%, #ffffff 100%);
+    color: var(--text-primary, #0f172a);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  a { color: inherit; }
+
+  .page-shell {
+    max-width: var(--page-max);
+    margin: 0 auto;
+    padding: 1.5rem 1.25rem 3rem;
+  }
+
   .hero {
-    padding: 3rem 2rem 2.5rem; text-align: center;
-    background: linear-gradient(135deg, var(--bg-card, #1f2937) 0%, var(--bg-body, #111827) 100%);
-    border-bottom: 1px solid var(--border, #374151);
     position: relative;
+    overflow: hidden;
+    margin-top: 0.5rem;
+    padding: 2rem 2rem 2.25rem;
+    border-radius: 28px;
+    background:
+      radial-gradient(circle at top right, rgba(191, 219, 254, 0.28), transparent 28%),
+      linear-gradient(135deg, var(--blue-800) 0%, var(--blue-700) 55%, var(--blue-900) 100%);
+    color: #fff;
+    box-shadow: var(--shadow-soft);
   }
-  .hero h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.03em; }
-  .hero h1 span { color: var(--accent, #60a5fa); }
-  .hero p { font-size: 0.95rem; color: var(--text-secondary, #9ca3af); margin-top: 0.5rem; }
-  .hero .stats {
-    display: flex; gap: 2rem; justify-content: center; margin-top: 1.2rem;
-    font-size: 0.8rem; color: var(--text-muted, #6b7280);
-  }
-  .hero .stats strong { color: var(--accent, #60a5fa); font-size: 1.1rem; display: block; font-family: monospace; }
-  .hero .theme-toggle { position: absolute; top: 1.5rem; right: 1.5rem; }
 
-  /* ── Course Grid ──────────────────────────────── */
-  .courses { max-width: 1200px; margin: 2rem auto; padding: 0 1.5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
-  @media (max-width: 900px) { .courses { grid-template-columns: 1fr; } }
+  .hero::after {
+    content: '';
+    position: absolute;
+    inset: auto -12% -42% auto;
+    width: 320px;
+    height: 320px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.14), transparent 68%);
+    pointer-events: none;
+  }
+
+  .hero-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.85rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: #dbeafe;
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    backdrop-filter: blur(8px);
+  }
+
+  .hero-copy {
+    max-width: 760px;
+    margin-top: 1rem;
+  }
+
+  .hero h1 {
+    font-size: clamp(2.15rem, 4vw, 3.6rem);
+    line-height: 1.05;
+    letter-spacing: -0.04em;
+    font-weight: 700;
+    margin-bottom: 0.85rem;
+  }
+
+  .hero h1 span {
+    color: #bfdbfe;
+  }
+
+  .hero p {
+    max-width: 680px;
+    font-size: 1rem;
+    color: rgba(219, 234, 254, 0.92);
+  }
+
+  .hero-meta {
+    margin-top: 1.35rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+  }
+
+  .hero-chip,
+  .hero-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-height: 40px;
+    padding: 0.65rem 1rem;
+    border-radius: 999px;
+    font-size: 0.92rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+  }
+
+  .hero-chip {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: #eff6ff;
+  }
+
+  .hero-link {
+    background: #ffffff;
+    color: var(--blue-700);
+    border: 1px solid rgba(255, 255, 255, 0.55);
+  }
+
+  .hero-link:hover,
+  .hero-chip:hover {
+    transform: translateY(-1px);
+  }
+
+  .hero .theme-toggle {
+    position: static;
+    flex-shrink: 0;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: rgba(255, 255, 255, 0.08);
+    color: #eff6ff;
+    backdrop-filter: blur(8px);
+  }
+
+  .hero .theme-toggle:hover {
+    background: rgba(255, 255, 255, 0.16);
+    border-color: rgba(255, 255, 255, 0.32);
+    color: #ffffff;
+  }
+
+  .section-intro {
+    margin: 1.75rem 0 1.1rem;
+    padding: 0 0.25rem;
+  }
+
+  .section-kicker {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.34rem 0.7rem;
+    border-radius: 999px;
+    background: var(--blue-50);
+    border: 1px solid var(--blue-100);
+    color: var(--blue-700);
+    font-size: 0.8rem;
+    font-weight: 700;
+    margin-bottom: 0.7rem;
+  }
+
+  .section-intro h2 {
+    font-size: clamp(1.6rem, 2.2vw, 2.2rem);
+    letter-spacing: -0.03em;
+    color: var(--slate-900);
+    margin-bottom: 0.35rem;
+  }
+
+  .section-intro p {
+    color: var(--text-secondary, #475569);
+    max-width: 760px;
+  }
+
+  .courses {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.4rem;
+  }
 
   .course {
-    background: var(--bg-card, #1f2937); border-radius: 12px;
-    border: 1px solid var(--border, #374151); overflow: hidden;
-    transition: border-color 0.2s;
+    background: var(--bg-card, #ffffff);
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: var(--shadow-card);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
   }
-  .course:hover { border-color: var(--text-muted, #6b7280); }
+
+  .course:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.10);
+    border-color: rgba(37, 99, 235, 0.24);
+  }
+
+  .course-bar {
+    height: 5px;
+    background: linear-gradient(90deg, var(--course-accent), var(--course-accent-soft));
+  }
 
   .course-header {
-    padding: 1rem 1.2rem; display: flex; align-items: center; gap: 0.7rem;
-    border-bottom: 1px solid var(--border, #374151);
+    display: flex;
+    gap: 0.95rem;
+    align-items: flex-start;
+    padding: 1.2rem 1.25rem 1rem;
+    border-bottom: 1px solid var(--border, #e2e8f0);
+    background: linear-gradient(180deg, rgba(248, 250, 252, 0.88), rgba(255, 255, 255, 0));
   }
-  .course-header .icon { font-size: 1.3rem; }
-  .course-header h2 { font-size: 1rem; font-weight: 600; flex: 1; }
-  .course-header .count { font-size: 0.7rem; color: var(--text-muted, #6b7280); font-family: monospace; }
-  .course-header .ref { font-size: 0.7rem; color: var(--text-muted, #6b7280); }
 
-  .demo-list { padding: 0.4rem 0; }
+  .course-header .icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    background: var(--course-tint);
+    border: 1px solid var(--course-tint-border);
+  }
+
+  .course-header h2 {
+    font-size: 1.08rem;
+    line-height: 1.3;
+    color: var(--text-primary, #0f172a);
+  }
+
+  .course-copy {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .course-meta {
+    margin-top: 0.4rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.65rem;
+  }
+
+  .count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2rem;
+    height: 1.65rem;
+    padding: 0 0.55rem;
+    border-radius: 999px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    background: var(--course-tint);
+    color: var(--course-accent-deep);
+    border: 1px solid var(--course-tint-border);
+  }
+
+  .ref {
+    font-size: 0.76rem;
+    color: var(--text-secondary, #64748b);
+  }
+
+  .demo-list {
+    padding: 0.55rem 0.6rem 0.7rem;
+    display: grid;
+    gap: 0.3rem;
+  }
+
   .demo-link {
-    display: flex; align-items: center; gap: 0.7rem;
-    padding: 0.55rem 1.2rem; text-decoration: none;
-    color: var(--text-primary, #d1d5db); transition: background 0.12s;
-    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    min-height: 48px;
+    padding: 0.72rem 0.9rem;
+    text-decoration: none;
+    color: var(--text-primary, #0f172a);
+    border-radius: 16px;
+    transition: background 0.14s ease, transform 0.14s ease;
   }
-  .demo-link:hover { background: var(--bg-control, #111827); }
-  .demo-link .num {
-    font-size: 0.7rem; font-weight: 700; font-family: monospace;
-    color: var(--text-muted, #6b7280); min-width: 1.5rem; text-align: right;
-  }
-  .demo-link .title { flex: 1; }
-  .demo-link .arrow { color: var(--text-dim, #4b5563); font-size: 0.75rem; opacity: 0; transition: opacity 0.12s, transform 0.12s; }
-  .demo-link:hover .arrow { opacity: 1; transform: translateX(2px); }
 
-  /* Course accent colors */
-  .course.ss { border-top: 3px solid #22d3ee; }
-  .course.ss .demo-link:hover .num { color: #22d3ee; }
-  .course.wc { border-top: 3px solid #60a5fa; }
-  .course.wc .demo-link:hover .num { color: #60a5fa; }
-  .course.rsp { border-top: 3px solid #c084fc; }
-  .course.rsp .demo-link:hover .num { color: #c084fc; }
-  .course.dsp { border-top: 3px solid #4ade80; }
-  .course.dsp .demo-link:hover .num { color: #4ade80; }
+  .demo-link:hover {
+    background: var(--course-soft);
+    transform: translateX(2px);
+  }
+
+  .demo-link .num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 999px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    font-family: 'Inter', sans-serif;
+    color: var(--course-accent);
+    background: var(--course-tint);
+    border: 1px solid var(--course-tint-border);
+    flex-shrink: 0;
+  }
+
+  .demo-link .title {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.92rem;
+    color: var(--text-primary, #0f172a);
+  }
+
+  .demo-link .arrow {
+    color: var(--course-accent);
+    font-size: 0.84rem;
+    opacity: 0.75;
+    transition: transform 0.14s ease, opacity 0.14s ease;
+  }
+
+  .demo-link:hover .arrow {
+    opacity: 1;
+    transform: translateX(2px);
+  }
+
+  .course.ss { --course-accent: #0891b2; --course-accent-soft: #67e8f9; --course-accent-deep: #0f766e; --course-tint: rgba(8, 145, 178, 0.10); --course-tint-border: rgba(8, 145, 178, 0.18); --course-soft: rgba(8, 145, 178, 0.07); }
+  .course.wc { --course-accent: #2563eb; --course-accent-soft: #60a5fa; --course-accent-deep: #1d4ed8; --course-tint: rgba(37, 99, 235, 0.10); --course-tint-border: rgba(37, 99, 235, 0.18); --course-soft: rgba(37, 99, 235, 0.07); }
+  .course.rsp { --course-accent: #7c3aed; --course-accent-soft: #a78bfa; --course-accent-deep: #6d28d9; --course-tint: rgba(124, 58, 237, 0.10); --course-tint-border: rgba(124, 58, 237, 0.18); --course-soft: rgba(124, 58, 237, 0.07); }
+  .course.dsp { --course-accent: #16a34a; --course-accent-soft: #4ade80; --course-accent-deep: #15803d; --course-tint: rgba(22, 163, 74, 0.10); --course-tint-border: rgba(22, 163, 74, 0.18); --course-soft: rgba(22, 163, 74, 0.07); }
 
   .footer {
-    text-align: center; padding: 2rem 1rem; font-size: 0.75rem;
-    color: var(--text-muted, #6b7280); border-top: 1px solid var(--border, #374151);
-    max-width: 1200px; margin: 2rem auto 0;
+    max-width: var(--page-max);
+    margin: 2rem auto 0;
+    padding: 1.4rem 1.25rem 0;
+    border-top: 1px solid var(--border, #e2e8f0);
+    color: var(--text-secondary, #64748b);
+    text-align: center;
+    font-size: 0.84rem;
   }
-  .footer a { color: var(--accent, #60a5fa); text-decoration: none; }
+
+  .footer a {
+    color: var(--blue-700);
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  .footer a:hover {
+    text-decoration: underline;
+  }
+
+  @media (max-width: 960px) {
+    .courses { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 768px) {
+    .page-shell { padding: 1rem 0.9rem 2.5rem; }
+    .hero { padding: 1.4rem 1.2rem 1.5rem; border-radius: 22px; }
+    .hero-top { align-items: center; }
+    .hero-copy { margin-top: 0.9rem; }
+    .hero p { font-size: 0.94rem; }
+    .hero-meta { gap: 0.6rem; }
+    .hero-chip, .hero-link { width: 100%; justify-content: center; }
+    .course-header { padding: 1rem 1rem 0.9rem; }
+    .demo-list { padding: 0.45rem 0.45rem 0.55rem; }
+  }
 </style>
+<script>
+  if (!localStorage.getItem('demo-theme')) {
+    localStorage.setItem('demo-theme', 'light');
+  }
+</script>
 <script src="theme.js?v=2"></script>
 </head>
 <body>
 
-<div class="hero">
-  <h1>Interactive <span>Lecture Demos</span></h1>
-  <p>REMI Lab — Chungnam National University</p>
-  <div class="stats">
-    <div><strong>4</strong>Courses</div>
-    <div><strong>34</strong>Demos</div>
-    <div><strong>0</strong>Dependencies</div>
-  </div>
-  <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"></button>
-</div>
-
-<div class="courses">
-
-  <div class="course ss">
-    <div class="course-header">
-      <h2>Signals and Systems</h2>
-      <span class="count">8</span>
-      <span class="ref">Oppenheim &amp; Willsky</span>
+<div class="page-shell">
+  <section class="hero">
+    <div class="hero-top">
+      <div class="hero-badge">REMI Lab · Interactive Teaching Demos</div>
+      <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"></button>
     </div>
-    <div class="demo-list">
-      <a class="demo-link" href="signals-and-systems/01-sinusoidal.html"><span class="num">01</span><span class="title">Sinusoidal Signals &amp; Phasors</span><span class="arrow">&rarr;</span></a>
-      <a class="demo-link" href="signals-and-systems/02-convolution.html"><span class="num">02</span><span class="title">Convolution</span><span class="arrow">&rarr;</span></a>
-      <a class="demo-link" href="signals-and-systems/03-fourier-series.html"><span class="num">03</span><span class="title">Fourier Series</span><span class="arrow">&rarr;</span></a>
-      <a class="demo-link" href="signals-and-systems/04-fourier-transform-filtering.html"><span class="num">04</span><span class="title">Fourier Transform &amp; Filtering</span><span class="arrow">&rarr;</span></a>
-      <a class="demo-link" href="signals-and-systems/05-sampling.html"><span class="num">05</span><span class="title">Sampling &amp; Reconstruction</span><span class="arrow">&rarr;</span></a>
-      <a class="demo-link" href="signals-and-systems/06-dft.html"><span class="num">06</span><span class="title">DFT &amp; Spectral Analysis</span><span class="arrow">&rarr;</span></a>
-      <a class="demo-link" href="signals-and-systems/07-z-transform.html"><span class="num">07</span><span class="title">Z-Transform &amp; Digital Filters</span><span class="arrow">&rarr;</span></a>
-      <a class="demo-link" href="signals-and-systems/08-laplace-transform.html"><span class="num">08</span><span class="title">Laplace Transform &amp; Stability</span><span class="arrow">&rarr;</span></a>
+
+    <div class="hero-copy">
+      <h1>Interactive <span>Lecture Demos</span></h1>
+      <p>
+        Self-paced lecture demos for signals, wireless communication, radar signal processing, and DSP.
+        Designed to feel consistent with the main REMI Lab website: clean cards, blue accents, and lightweight static delivery.
+      </p>
+
+      <div class="hero-meta">
+        <div class="hero-chip">Courses curated for REMI lectures</div>
+        <a class="hero-link" href="https://remilab.cnu.ac.kr">Visit remilab.cnu.ac.kr</a>
+      </div>
     </div>
+  </section>
+
+  <div class="section-intro">
+    <span class="section-kicker">Course Catalog</span>
+    <h2>Browse demos by lecture track</h2>
+    <p>
+      Each card groups interactive examples by course so students can move from conceptual intuition to numerical inspection without extra setup.
+    </p>
   </div>
 
-  <div class="course wc">
-    <div class="course-header">
-      <h2>Wireless Communication</h2>
-      <span class="count">11</span>
-      <span class="ref">Proakis &amp; Salehi</span>
-    </div>
-    <div class="demo-list">
-      <a class="demo-link" href="wireless-comm/01-analog-modulation.html"><span class="num">01</span><span class="title">Analog Modulation</span><span class="arrow">&rarr;</span></a>
-      <a class="demo-link" href="wireless-comm/02-digital-modulation.html"><span class="num">02</span><span class="title">Digital Modulation &amp; Constellation</span><span class="arrow">&rarr;</span></a>
-      <a class="demo-link" href="wireless-comm/03-ber-curves.html"><span class="num">03</span><span class="title">BER Curves &amp; Comparison</span><span class="arrow">&rarr;</span></a>
-      <a class="demo-link" href="wireless-comm/04-pulse-shaping.html"><span class="num">04</span><span class="title">Pulse Shaping &amp; Eye Diagram</span><span class="arrow">&rarr;</span></a>
-      <a class="demo-link" href="wireless-comm/05-ofdm.html"><span class="num">05</span><span class="title">OFDM</span><span class="arrow">&rarr;</span></a>
-      <a class="demo-link" href="wireless-comm/06-channel-fading.html"><span class="num">06</span><span class="title">Channel Fading</span><span class="arrow">&rarr;</span></a>
-      <a class="demo-link" href="wireless-comm/07-link-budget.html"><span class="num">07</span><span class="title">Link Budget</span><span class="arrow">&rarr;</span></a>
-      <a class="demo-link" href="wireless-comm/08-shannon-capacity.html"><span class="num">08</span><span class="title">Shannon Capacity</span><span class="arrow">&rarr;</span></a>
-      <a class="demo-link" href="wireless-comm/09-multiplexing.html"><span class="num">09</span><span class="title">Multiplexing Techniques</span><span class="arrow">&rarr;</span></a>
-      <a class="demo-link" href="wireless-comm/10-spread-spectrum.html"><span class="num">10</span><span class="title">Spread Spectrum &amp; CDMA</span><span class="arrow">&rarr;</span></a>
-      <a class="demo-link" href="wireless-comm/11-equalization.html"><span class="num">11</span><span class="title">Channel Equalization</span><span class="arrow">&rarr;</span></a>
-    </div>
-  </div>
+  <div class="courses">
 
-  <div class="course rsp">
-    <div class="course-header">
-      <h2>Radar Signal Processing</h2>
-      <span class="count">12</span>
-      <span class="ref">Skolnik &middot; Richards</span>
+    <div class="course ss">
+      <div class="course-bar"></div>
+      <div class="course-header">
+        <span class="icon">∿</span>
+        <div class="course-copy">
+          <h2>Signals and Systems</h2>
+          <div class="course-meta">
+            <span class="count">8 demos</span>
+            <span class="ref">Oppenheim &amp; Willsky</span>
+          </div>
+        </div>
+      </div>
+      <div class="demo-list">
+        <a class="demo-link" href="signals-and-systems/01-sinusoidal.html"><span class="num">01</span><span class="title">Sinusoidal Signals &amp; Phasors</span><span class="arrow">&rarr;</span></a>
+        <a class="demo-link" href="signals-and-systems/02-convolution.html"><span class="num">02</span><span class="title">Convolution</span><span class="arrow">&rarr;</span></a>
+        <a class="demo-link" href="signals-and-systems/03-fourier-series.html"><span class="num">03</span><span class="title">Fourier Series</span><span class="arrow">&rarr;</span></a>
+        <a class="demo-link" href="signals-and-systems/04-fourier-transform-filtering.html"><span class="num">04</span><span class="title">Fourier Transform &amp; Filtering</span><span class="arrow">&rarr;</span></a>
+        <a class="demo-link" href="signals-and-systems/05-sampling.html"><span class="num">05</span><span class="title">Sampling &amp; Reconstruction</span><span class="arrow">&rarr;</span></a>
+        <a class="demo-link" href="signals-and-systems/06-dft.html"><span class="num">06</span><span class="title">DFT &amp; Spectral Analysis</span><span class="arrow">&rarr;</span></a>
+        <a class="demo-link" href="signals-and-systems/07-z-transform.html"><span class="num">07</span><span class="title">Z-Transform &amp; Digital Filters</span><span class="arrow">&rarr;</span></a>
+        <a class="demo-link" href="signals-and-systems/08-laplace-transform.html"><span class="num">08</span><span class="title">Laplace Transform &amp; Stability</span><span class="arrow">&rarr;</span></a>
+      </div>
     </div>
-    <div class="demo-list">
-      <a class="demo-link" href="radar/01-radar-equation.html"><span class="num">01</span><span class="title">Radar Equation</span><span class="arrow">&rarr;</span></a>
-      <a class="demo-link" href="radar/02-matched-filter.html"><span class="num">02</span><span class="title">Matched Filter</span><span class="arrow">&rarr;</span></a>
-      <a class="demo-link" href="radar/03-fmcw-radar.html"><span class="num">03</span><span class="title">FMCW Radar</span><span class="arrow">&rarr;</span></a>
-      <a class="demo-link" href="radar/04-doppler-effect.html"><span class="num">04</span><span class="title">Doppler Effect</span><span class="arrow">&rarr;</span></a>
-      <a class="demo-link" href="radar/05-ambiguity-function.html"><span class="num">05</span><span class="title">Ambiguity Function</span><span class="arrow">&rarr;</span></a>
-      <a class="demo-link" href="radar/06-cfar.html"><span class="num">06</span><span class="title">CFAR Detection</span><span class="arrow">&rarr;</span></a>
-      <a class="demo-link" href="radar/07-mti-pulse-doppler.html"><span class="num">07</span><span class="title">MTI &amp; Pulse-Doppler</span><span class="arrow">&rarr;</span></a>
-      <a class="demo-link" href="radar/08-beamforming.html"><span class="num">08</span><span class="title">Array Beamforming</span><span class="arrow">&rarr;</span></a>
-      <a class="demo-link" href="radar/09-sar-imaging.html"><span class="num">09</span><span class="title">SAR Imaging</span><span class="arrow">&rarr;</span></a>
-      <a class="demo-link" href="radar/10-rcs-swerling.html"><span class="num">10</span><span class="title">RCS &amp; Swerling Models</span><span class="arrow">&rarr;</span></a>
-      <a class="demo-link" href="radar/11-target-tracking.html"><span class="num">11</span><span class="title">Target Tracking — KF &amp; EKF</span><span class="arrow">&rarr;</span></a>
-      <a class="demo-link" href="radar/12-radar-cube.html"><span class="num">12</span><span class="title">Radar Data Cube</span><span class="arrow">&rarr;</span></a>
-    </div>
-  </div>
 
-  <div class="course dsp">
-    <div class="course-header">
-      <h2>DSP &amp; Signal Analysis</h2>
-      <span class="count">3</span>
-      <span class="ref">Haykin &middot; Stoica &middot; Huang</span>
+    <div class="course wc">
+      <div class="course-bar"></div>
+      <div class="course-header">
+        <span class="icon">⌁</span>
+        <div class="course-copy">
+          <h2>Wireless Communication</h2>
+          <div class="course-meta">
+            <span class="count">11 demos</span>
+            <span class="ref">Proakis &amp; Salehi</span>
+          </div>
+        </div>
+      </div>
+      <div class="demo-list">
+        <a class="demo-link" href="wireless-comm/01-analog-modulation.html"><span class="num">01</span><span class="title">Analog Modulation</span><span class="arrow">&rarr;</span></a>
+        <a class="demo-link" href="wireless-comm/02-digital-modulation.html"><span class="num">02</span><span class="title">Digital Modulation &amp; Constellation</span><span class="arrow">&rarr;</span></a>
+        <a class="demo-link" href="wireless-comm/03-ber-curves.html"><span class="num">03</span><span class="title">BER Curves &amp; Comparison</span><span class="arrow">&rarr;</span></a>
+        <a class="demo-link" href="wireless-comm/04-pulse-shaping.html"><span class="num">04</span><span class="title">Pulse Shaping &amp; Eye Diagram</span><span class="arrow">&rarr;</span></a>
+        <a class="demo-link" href="wireless-comm/05-ofdm.html"><span class="num">05</span><span class="title">OFDM</span><span class="arrow">&rarr;</span></a>
+        <a class="demo-link" href="wireless-comm/06-channel-fading.html"><span class="num">06</span><span class="title">Channel Fading</span><span class="arrow">&rarr;</span></a>
+        <a class="demo-link" href="wireless-comm/07-link-budget.html"><span class="num">07</span><span class="title">Link Budget</span><span class="arrow">&rarr;</span></a>
+        <a class="demo-link" href="wireless-comm/08-shannon-capacity.html"><span class="num">08</span><span class="title">Shannon Capacity</span><span class="arrow">&rarr;</span></a>
+        <a class="demo-link" href="wireless-comm/09-multiplexing.html"><span class="num">09</span><span class="title">Multiplexing Techniques</span><span class="arrow">&rarr;</span></a>
+        <a class="demo-link" href="wireless-comm/10-spread-spectrum.html"><span class="num">10</span><span class="title">Spread Spectrum &amp; CDMA</span><span class="arrow">&rarr;</span></a>
+        <a class="demo-link" href="wireless-comm/11-equalization.html"><span class="num">11</span><span class="title">Channel Equalization</span><span class="arrow">&rarr;</span></a>
+      </div>
     </div>
-    <div class="demo-list">
-      <a class="demo-link" href="dsp-signal-analysis/01-adaptive-filtering.html"><span class="num">01</span><span class="title">Adaptive Filtering</span><span class="arrow">&rarr;</span></a>
-      <a class="demo-link" href="dsp-signal-analysis/02-spectral-estimation.html"><span class="num">02</span><span class="title">Spectral Estimation &amp; Chirp-Z</span><span class="arrow">&rarr;</span></a>
-      <a class="demo-link" href="dsp-signal-analysis/03-emd-vmd.html"><span class="num">03</span><span class="title">EMD &amp; VMD Decomposition</span><span class="arrow">&rarr;</span></a>
-    </div>
-  </div>
 
+    <div class="course rsp">
+      <div class="course-bar"></div>
+      <div class="course-header">
+        <span class="icon">◌</span>
+        <div class="course-copy">
+          <h2>Radar Signal Processing</h2>
+          <div class="course-meta">
+            <span class="count">12 demos</span>
+            <span class="ref">Skolnik &middot; Richards</span>
+          </div>
+        </div>
+      </div>
+      <div class="demo-list">
+        <a class="demo-link" href="radar/01-radar-equation.html"><span class="num">01</span><span class="title">Radar Equation</span><span class="arrow">&rarr;</span></a>
+        <a class="demo-link" href="radar/02-matched-filter.html"><span class="num">02</span><span class="title">Matched Filter</span><span class="arrow">&rarr;</span></a>
+        <a class="demo-link" href="radar/03-fmcw-radar.html"><span class="num">03</span><span class="title">FMCW Radar</span><span class="arrow">&rarr;</span></a>
+        <a class="demo-link" href="radar/04-doppler-effect.html"><span class="num">04</span><span class="title">Doppler Effect</span><span class="arrow">&rarr;</span></a>
+        <a class="demo-link" href="radar/05-ambiguity-function.html"><span class="num">05</span><span class="title">Ambiguity Function</span><span class="arrow">&rarr;</span></a>
+        <a class="demo-link" href="radar/06-cfar.html"><span class="num">06</span><span class="title">CFAR Detection</span><span class="arrow">&rarr;</span></a>
+        <a class="demo-link" href="radar/07-mti-pulse-doppler.html"><span class="num">07</span><span class="title">MTI &amp; Pulse-Doppler</span><span class="arrow">&rarr;</span></a>
+        <a class="demo-link" href="radar/08-beamforming.html"><span class="num">08</span><span class="title">Array Beamforming</span><span class="arrow">&rarr;</span></a>
+        <a class="demo-link" href="radar/09-sar-imaging.html"><span class="num">09</span><span class="title">SAR Imaging</span><span class="arrow">&rarr;</span></a>
+        <a class="demo-link" href="radar/10-rcs-swerling.html"><span class="num">10</span><span class="title">RCS &amp; Swerling Models</span><span class="arrow">&rarr;</span></a>
+        <a class="demo-link" href="radar/11-target-tracking.html"><span class="num">11</span><span class="title">Target Tracking — KF &amp; EKF</span><span class="arrow">&rarr;</span></a>
+        <a class="demo-link" href="radar/12-radar-cube.html"><span class="num">12</span><span class="title">Radar Data Cube</span><span class="arrow">&rarr;</span></a>
+      </div>
+    </div>
+
+    <div class="course dsp">
+      <div class="course-bar"></div>
+      <div class="course-header">
+        <span class="icon">⋄</span>
+        <div class="course-copy">
+          <h2>DSP &amp; Signal Analysis</h2>
+          <div class="course-meta">
+            <span class="count">3 demos</span>
+            <span class="ref">Haykin &middot; Stoica &middot; Huang</span>
+          </div>
+        </div>
+      </div>
+      <div class="demo-list">
+        <a class="demo-link" href="dsp-signal-analysis/01-adaptive-filtering.html"><span class="num">01</span><span class="title">Adaptive Filtering</span><span class="arrow">&rarr;</span></a>
+        <a class="demo-link" href="dsp-signal-analysis/02-spectral-estimation.html"><span class="num">02</span><span class="title">Spectral Estimation &amp; Chirp-Z</span><span class="arrow">&rarr;</span></a>
+        <a class="demo-link" href="dsp-signal-analysis/03-emd-vmd.html"><span class="num">03</span><span class="title">EMD &amp; VMD Decomposition</span><span class="arrow">&rarr;</span></a>
+      </div>
+    </div>
+
+  </div>
 </div>
 
 <div class="footer">
-  Self-contained HTML &middot; Plotly.js &middot; No server required &middot;
-  <a href="https://remilab.cnu.ac.kr">remilab.cnu.ac.kr</a>
+  REMI Lab interactive lecture demos &middot; <a href="https://remilab.cnu.ac.kr">remilab.cnu.ac.kr</a>
 </div>
 
 </body>
