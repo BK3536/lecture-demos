@@ -13,6 +13,7 @@ RAW_QUICKLOOK = SAR_RFI / 'data' / 'sentinel1_l0' / 'quicklook' / 'chunk_0000_sa
 FOCUSED_SWATH = SAR_RFI / 'data' / 'sentinel1_l0' / 'official_focus_sw10_tops_dem' / 'swath_10_stitched_focused.npz'
 GEOCODE_GRID = SAR_RFI / 'data' / 'sentinel1_l0' / 'official_focus_sw10_tops_dem' / 'geocode_grid_downsampled.npz'
 REPORT_JSON = SAR_RFI / 'data' / 'sentinel1_l0' / 'official_focus_sw10_tops_dem' / 'swath_10_report.json'
+GRD_CROP = SAR_RFI / 'data' / 'sentinel1_grd_baseline' / 'processed' / 'S1A_IW_GRDH_1SDV_20250127T211653_20250127T211722_057635_071A24_vv_crop2048.npz'
 
 
 def sample_grid(arr: np.ndarray, target_h: int, target_w: int) -> np.ndarray:
@@ -31,6 +32,12 @@ def relative_db(arr: np.ndarray) -> np.ndarray:
         db = arr.astype(np.float32)
     db -= float(np.nanmax(db))
     return db
+
+
+def relative_to_percentile(arr: np.ndarray, q: float) -> np.ndarray:
+    arr = np.asarray(arr, dtype=np.float32)
+    ref = float(np.nanpercentile(arr, q))
+    return arr - ref
 
 
 def pack_grid(arr: np.ndarray) -> list[list[int]]:
@@ -65,15 +72,13 @@ def main() -> None:
     quicklook = np.load(RAW_QUICKLOOK)
     focused = np.load(FOCUSED_SWATH)
     geocode = np.load(GEOCODE_GRID)
+    grd = np.load(GRD_CROP)
     report = json.loads(REPORT_JSON.read_text())
 
     raw_rel = relative_db(quicklook['raw_db'])
     rc_rel = relative_db(quicklook['rc_db'])
     focused_rel = relative_db(focused['img'])
-    geocoded_rel = relative_db(geocode['img_db'])
-
-    lat = geocode['lat']
-    lon = geocode['lon']
+    grd_final_rel = relative_to_percentile(grd['db_filtered'], 99.0)
 
     payload = {
         'source': {
@@ -85,6 +90,7 @@ def main() -> None:
             'raw_quicklook_npz': str(RAW_QUICKLOOK.relative_to(SAR_RFI)),
             'focused_npz': str(FOCUSED_SWATH.relative_to(SAR_RFI)),
             'geocode_npz': str(GEOCODE_GRID.relative_to(SAR_RFI)),
+            'grd_crop_npz': str(GRD_CROP.relative_to(SAR_RFI)),
         },
         'metrics': {
             'stitched_shape': report.get('stitched_shape', [int(focused['img'].shape[0]), int(focused['img'].shape[1])]),
@@ -133,16 +139,16 @@ def main() -> None:
                 y_extent=(0, focused['img'].shape[0] - 1),
             ),
             panel_payload(
-                'geocoded',
-                'Geocoded image overview',
-                'Approximate latitude / longitude grid after terrain-aware projection',
-                geocoded_rel,
-                target_h=192,
-                target_w=192,
-                x_label='Longitude (deg)',
-                y_label='Latitude (deg)',
-                x_extent=(float(np.nanmin(lon)), float(np.nanmax(lon))),
-                y_extent=(float(np.nanmin(lat)), float(np.nanmax(lat))),
+                'final_product',
+                'Final GRD-style SAR image',
+                'Actual terrain-like Sentinel-1 VV product crop from the sar-rfi baseline processing path',
+                grd_final_rel,
+                target_h=320,
+                target_w=320,
+                x_label='Range pixel',
+                y_label='Azimuth pixel',
+                x_extent=(0, grd['db_filtered'].shape[1] - 1),
+                y_extent=(0, grd['db_filtered'].shape[0] - 1),
             ),
         ],
     }
