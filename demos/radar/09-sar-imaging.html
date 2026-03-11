@@ -45,10 +45,10 @@
   <div class="controls">
     <div class="control-group">
       <h3>Scene</h3>
-      <label>Point targets (3×3 grid) <span class="val" id="v-ntgt">3</span></label>
-      <input type="range" id="ntgt" min="1" max="9" step="1" value="3">
-      <label>Target spread (m) <span class="val" id="v-rspread">600</span></label>
-      <input type="range" id="rspread" min="100" max="1500" step="50" value="600">
+      <label>Point targets <span class="val" id="v-ntgt">4</span></label>
+      <input type="range" id="ntgt" min="1" max="9" step="1" value="4">
+      <label>Target spread (m) <span class="val" id="v-rspread">450</span></label>
+      <input type="range" id="rspread" min="100" max="1500" step="50" value="450">
     </div>
     <div class="control-group">
       <h3>Radar &amp; geometry</h3>
@@ -259,6 +259,8 @@ function updateInsight(metrics, targets, spread) {
   const minTargetSpacing = targets.length > 1 ? (spread / Math.max(1, Math.ceil(Math.sqrt(targets.length)) - 1)) : Infinity;
   const mergeRange = minTargetSpacing < 1.2 * metrics.deltaR;
   const mergeAz = minTargetSpacing < 1.2 * metrics.deltaAz;
+  const rangeVisibility = metrics.displayDeltaR / Math.max(metrics.deltaR, 1e-6);
+  const azVisibility = metrics.displayDeltaAz / Math.max(metrics.deltaAz, 1e-6);
   document.getElementById('insight-box').innerHTML = `
     <strong>Parameter insight</strong><br>
     <ul style="padding-left:1.05rem; margin-top:0.45rem; display:grid; gap:0.32rem;">
@@ -266,6 +268,7 @@ function updateInsight(metrics, targets, spread) {
       <li><code>L<sub>a</sub> = ${metrics.antLen.toFixed(1)} m</code> gives stripmap <strong>azimuth resolution</strong> <code>Δaz ≈ ${metrics.deltaAz.toFixed(2)} m</code>. Longer antennas blur targets vertically in the focused image.</li>
       <li><code>R<sub>0</sub> = ${metrics.r0km.toFixed(0)} km</code> and <code>f<sub>c</sub> = ${metrics.fcGHz.toFixed(1)} GHz</code> set the <strong>synthetic aperture</strong> to about <code>${metrics.apertureLength.toFixed(0)} m</code>, which changes the raw-echo migration geometry.</li>
       <li><code>v = ${metrics.vel.toFixed(0)} m/s</code> gives <strong>dwell time</strong> <code>${metrics.dwell.toFixed(2)} s</code>. Faster motion compresses the same aperture into a shorter slow-time history.</li>
+      <li>The focused-image blur is intentionally <strong>visually enlarged</strong> by about <code>${rangeVisibility.toFixed(1)}×</code> in range and <code>${azVisibility.toFixed(1)}×</code> in azimuth so the parameter effect is obvious on screen.</li>
       <li>${mergeRange || mergeAz ? 'At the current target spacing, nearby points begin to merge in the focused image.' : 'Current target spacing is wide enough to resolve the points after focusing.'}</li>
     </ul>
   `;
@@ -297,8 +300,8 @@ function update() {
   const apertureLength = clamp(lambda * R0 / Math.max(antLen, 0.2), 250, 18000);
   const dwell = apertureLength / vel;
 
-  const rangeSpan = Math.max(rspread * 2.5, 900, 18 * deltaR);
-  const imageAzSpan = Math.max(rspread * 2.5, 900, 12 * deltaAz);
+  const rangeSpan = Math.max(rspread * 2.15, 640, 18 * deltaR);
+  const imageAzSpan = Math.max(rspread * 2.15, 640, 12 * deltaAz);
   const NR = 220;
   const NA = 180;
   const rangeAxis = linspace(-rangeSpan / 2, rangeSpan / 2, NR);
@@ -313,8 +316,8 @@ function update() {
 
   const targets = buildTargets(nTgt, rspread, rangeSpan, imageAzSpan);
   const rawAndRc = buildRawAndRc(targets, { NA, NR, R0, fc, aperturePos, rangeAxis, apertureLength, rawKernel });
-  const displayDeltaR = Math.max(deltaR, rangeSpan / NR * 2.2);
-  const displayDeltaAz = Math.max(deltaAz, imageAzSpan / NA * 2.2);
+  const displayDeltaR = clamp(Math.max(deltaR * 18, rangeSpan / NR * 0.95), rangeSpan / NR * 0.95, rangeSpan * 0.16);
+  const displayDeltaAz = clamp(Math.max(deltaAz * 11, imageAzSpan / NA * 0.95), imageAzSpan / NA * 0.95, imageAzSpan * 0.16);
   const focusedLinear = buildFocusedImage(targets, rangeAxis, azImageAxis, displayDeltaR, displayDeltaAz);
 
   const rawDisplay = normalizeReal2D(rawAndRc.rawRe);
@@ -326,7 +329,7 @@ function update() {
   document.getElementById('m-lsa').textContent = apertureLength.toFixed(0) + ' m';
   document.getElementById('m-dwell').textContent = dwell.toFixed(2) + ' s';
 
-  updateInsight({ bwMHz, deltaR, deltaAz, antLen, apertureLength, dwell, r0km, fcGHz, vel }, targets, rspread);
+  updateInsight({ bwMHz, deltaR, deltaAz, antLen, apertureLength, dwell, r0km, fcGHz, vel, displayDeltaR, displayDeltaAz }, targets, rspread);
 
   const rawColors = [[0,'#1d4ed8'],[0.5,'#f8fafc'],[1,'#dc2626']];
   const magColors = [[0,'#020617'],[0.18,'#0f172a'],[0.45,'#1d4ed8'],[0.78,'#60a5fa'],[1,'#ffffff']];
