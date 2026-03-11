@@ -30,6 +30,8 @@
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
+  html { scroll-behavior: smooth; }
+
   body {
     font-family: 'Pretendard', 'Inter', system-ui, -apple-system, sans-serif;
     background:
@@ -86,9 +88,7 @@
     margin: 0;
   }
 
-  .hero h1 span {
-    color: #bfdbfe;
-  }
+  .hero h1 span { color: #bfdbfe; }
 
   .hero .theme-toggle {
     position: static;
@@ -111,6 +111,7 @@
   .section-intro {
     margin: 1.75rem 0 1.1rem;
     padding: 0 0.25rem;
+    scroll-margin-top: 1rem;
   }
 
   .section-kicker {
@@ -133,11 +134,20 @@
     margin-bottom: 0.35rem;
   }
 
-
   .courses {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1.4rem;
+  }
+
+  .course,
+  .course-detail-panel {
+    --course-accent: var(--blue-700);
+    --course-accent-soft: var(--blue-200);
+    --course-accent-deep: var(--blue-800);
+    --course-tint: rgba(37, 99, 235, 0.10);
+    --course-tint-border: rgba(37, 99, 235, 0.18);
+    --course-soft: rgba(37, 99, 235, 0.07);
   }
 
   .course {
@@ -147,6 +157,8 @@
     overflow: hidden;
     box-shadow: var(--shadow-card);
     transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    display: flex;
+    flex-direction: column;
   }
 
   .course:hover {
@@ -155,12 +167,14 @@
     border-color: rgba(37, 99, 235, 0.24);
   }
 
-  .course-bar {
+  .course-bar,
+  .course-detail-bar {
     height: 5px;
     background: linear-gradient(90deg, var(--course-accent), var(--course-accent-soft));
   }
 
-  .course-header {
+  .course-header,
+  .course-detail-head {
     display: flex;
     gap: 0.95rem;
     align-items: flex-start;
@@ -169,7 +183,8 @@
     background: linear-gradient(180deg, rgba(248, 250, 252, 0.88), rgba(255, 255, 255, 0));
   }
 
-  .course-header .icon {
+  .course-header .icon,
+  .course-detail-head .icon {
     width: 2.5rem;
     height: 2.5rem;
     border-radius: 14px;
@@ -179,20 +194,25 @@
     font-size: 1.2rem;
     background: var(--course-tint);
     border: 1px solid var(--course-tint-border);
+    flex-shrink: 0;
   }
 
-  .course-header h2 {
-    font-size: 1.08rem;
-    line-height: 1.3;
-    color: var(--text-primary, #0f172a);
-  }
-
-  .course-copy {
+  .course-copy,
+  .course-detail-copy {
     flex: 1;
     min-width: 0;
   }
 
-  .course-meta {
+  .course-header h3,
+  .course-detail-head h3 {
+    font-size: 1.08rem;
+    line-height: 1.3;
+    color: var(--text-primary, #0f172a);
+    margin: 0;
+  }
+
+  .course-meta,
+  .course-detail-meta {
     margin-top: 0.4rem;
     display: flex;
     flex-wrap: wrap;
@@ -215,18 +235,22 @@
     border: 1px solid var(--course-tint-border);
   }
 
-  .ref {
+  .ref,
+  .course-detail-note,
+  .summary-note {
     font-size: 0.76rem;
     color: var(--text-secondary, #64748b);
   }
 
-  .demo-list {
-    padding: 0.55rem 0.6rem 0.7rem;
+  .course-preview {
+    padding: 0.55rem 0.6rem 0.25rem;
     display: grid;
     gap: 0.3rem;
+    flex: 1;
   }
 
-  .demo-link {
+  .demo-link,
+  .detail-link {
     display: flex;
     align-items: center;
     gap: 0.8rem;
@@ -235,15 +259,17 @@
     text-decoration: none;
     color: var(--text-primary, #0f172a);
     border-radius: 16px;
-    transition: background 0.14s ease, transform 0.14s ease;
+    transition: background 0.14s ease, transform 0.14s ease, border-color 0.14s ease;
   }
 
-  .demo-link:hover {
+  .demo-link:hover,
+  .detail-link:hover {
     background: var(--course-soft);
     transform: translateX(2px);
   }
 
-  .demo-link .num {
+  .demo-link .num,
+  .detail-link .detail-num {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -259,29 +285,122 @@
     flex-shrink: 0;
   }
 
-  .demo-link .title {
+  .demo-link .title,
+  .detail-link .detail-title {
     flex: 1;
     min-width: 0;
     font-size: 0.92rem;
     color: var(--text-primary, #0f172a);
   }
 
-  .demo-link .arrow {
+  .demo-link .arrow,
+  .detail-link .detail-arrow,
+  .summary-jump .jump-arrow,
+  .back-link .jump-arrow {
     color: var(--course-accent);
     font-size: 0.84rem;
-    opacity: 0.75;
+    opacity: 0.78;
     transition: transform 0.14s ease, opacity 0.14s ease;
   }
 
-  .demo-link:hover .arrow {
+  .demo-link:hover .arrow,
+  .detail-link:hover .detail-arrow,
+  .summary-jump:hover .jump-arrow,
+  .back-link:hover .jump-arrow {
     opacity: 1;
     transform: translateX(2px);
   }
 
-  .course.ss { --course-accent: #0891b2; --course-accent-soft: #67e8f9; --course-accent-deep: #0f766e; --course-tint: rgba(8, 145, 178, 0.10); --course-tint-border: rgba(8, 145, 178, 0.18); --course-soft: rgba(8, 145, 178, 0.07); }
-  .course.wc { --course-accent: #2563eb; --course-accent-soft: #60a5fa; --course-accent-deep: #1d4ed8; --course-tint: rgba(37, 99, 235, 0.10); --course-tint-border: rgba(37, 99, 235, 0.18); --course-soft: rgba(37, 99, 235, 0.07); }
-  .course.rsp { --course-accent: #7c3aed; --course-accent-soft: #a78bfa; --course-accent-deep: #6d28d9; --course-tint: rgba(124, 58, 237, 0.10); --course-tint-border: rgba(124, 58, 237, 0.18); --course-soft: rgba(124, 58, 237, 0.07); }
-  .course.dsp { --course-accent: #16a34a; --course-accent-soft: #4ade80; --course-accent-deep: #15803d; --course-tint: rgba(22, 163, 74, 0.10); --course-tint-border: rgba(22, 163, 74, 0.18); --course-soft: rgba(22, 163, 74, 0.07); }
+  .course-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.8rem 1rem 1rem;
+    border-top: 1px solid var(--border, #e2e8f0);
+  }
+
+  .summary-jump,
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    border-radius: 999px;
+    border: 1px solid var(--course-tint-border);
+    background: var(--course-tint);
+    color: var(--course-accent-deep);
+    padding: 0.62rem 0.95rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background 0.14s ease, border-color 0.14s ease, transform 0.14s ease;
+  }
+
+  .summary-jump:hover,
+  .back-link:hover {
+    background: var(--course-soft);
+    transform: translateY(-1px);
+  }
+
+  .course-detail-shell {
+    margin-top: 1.5rem;
+    display: grid;
+    gap: 1.15rem;
+  }
+
+  .course-detail-panel {
+    background: var(--bg-card, #ffffff);
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: var(--shadow-card);
+    scroll-margin-top: 1.2rem;
+  }
+
+  .course-detail-panel:target {
+    border-color: var(--course-tint-border);
+    box-shadow: 0 0 0 3px var(--course-soft), 0 18px 40px rgba(15, 23, 42, 0.10);
+  }
+
+  .course-detail-head {
+    justify-content: space-between;
+  }
+
+  .course-detail-note { margin-top: 0.55rem; font-size: 0.84rem; }
+
+  .course-detail-tools {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .course-detail-grid {
+    padding: 0.85rem;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.55rem;
+  }
+
+  .detail-link {
+    border: 1px solid var(--border, #e2e8f0);
+    background: rgba(255, 255, 255, 0.92);
+  }
+
+  .detail-link:hover {
+    border-color: var(--course-tint-border);
+    background: var(--course-soft);
+    transform: translateY(-1px);
+  }
+
+  .course.ss,
+  .course-detail-panel.ss { --course-accent: #0891b2; --course-accent-soft: #67e8f9; --course-accent-deep: #0f766e; --course-tint: rgba(8, 145, 178, 0.10); --course-tint-border: rgba(8, 145, 178, 0.18); --course-soft: rgba(8, 145, 178, 0.07); }
+  .course.wc,
+  .course-detail-panel.wc { --course-accent: #2563eb; --course-accent-soft: #60a5fa; --course-accent-deep: #1d4ed8; --course-tint: rgba(37, 99, 235, 0.10); --course-tint-border: rgba(37, 99, 235, 0.18); --course-soft: rgba(37, 99, 235, 0.07); }
+  .course.rsp,
+  .course-detail-panel.rsp { --course-accent: #7c3aed; --course-accent-soft: #a78bfa; --course-accent-deep: #6d28d9; --course-tint: rgba(124, 58, 237, 0.10); --course-tint-border: rgba(124, 58, 237, 0.18); --course-soft: rgba(124, 58, 237, 0.07); }
+  .course.dsp,
+  .course-detail-panel.dsp { --course-accent: #16a34a; --course-accent-soft: #4ade80; --course-accent-deep: #15803d; --course-tint: rgba(22, 163, 74, 0.10); --course-tint-border: rgba(22, 163, 74, 0.18); --course-soft: rgba(22, 163, 74, 0.07); }
 
   .footer {
     max-width: var(--page-max);
@@ -299,20 +418,25 @@
     font-weight: 600;
   }
 
-  .footer a:hover {
-    text-decoration: underline;
-  }
+  .footer a:hover { text-decoration: underline; }
 
   @media (max-width: 960px) {
-    .courses { grid-template-columns: 1fr; }
+    .courses,
+    .course-detail-grid { grid-template-columns: 1fr; }
   }
 
   @media (max-width: 768px) {
     .page-shell { padding: 1rem 0.9rem 2.5rem; }
     .hero { padding: 1.4rem 1.2rem 1.5rem; border-radius: 22px; }
     .hero-top { align-items: center; }
-    .course-header { padding: 1rem 1rem 0.9rem; }
-    .demo-list { padding: 0.45rem 0.45rem 0.55rem; }
+    .course-header,
+    .course-detail-head { padding: 1rem 1rem 0.9rem; }
+    .course-preview { padding: 0.45rem 0.45rem 0.2rem; }
+    .course-actions,
+    .course-detail-tools { flex-direction: column; align-items: stretch; }
+    .summary-jump,
+    .back-link { width: 100%; justify-content: center; }
+    .course-detail-grid { padding: 0.6rem; }
   }
 </style>
 <script>
@@ -332,112 +456,220 @@
     </div>
   </section>
 
-  <div class="section-intro">
+  <div class="section-intro" id="catalog">
     <span class="section-kicker">Course Catalog</span>
     <h2>Browse demos by lecture track</h2>
   </div>
 
   <div class="courses">
-
-    <div class="course ss">
+    <article class="course ss">
       <div class="course-bar"></div>
       <div class="course-header">
         <span class="icon">∿</span>
         <div class="course-copy">
-          <h2>Signals and Systems</h2>
+          <h3>Signals and Systems</h3>
           <div class="course-meta">
             <span class="count">8 demos</span>
             <span class="ref">Oppenheim &amp; Willsky</span>
           </div>
         </div>
       </div>
-      <div class="demo-list">
+      <div class="course-preview">
         <a class="demo-link" href="signals-and-systems/01-sinusoidal.html"><span class="num">01</span><span class="title">Sinusoidal Signals &amp; Phasors</span><span class="arrow">&rarr;</span></a>
         <a class="demo-link" href="signals-and-systems/02-convolution.html"><span class="num">02</span><span class="title">Convolution</span><span class="arrow">&rarr;</span></a>
         <a class="demo-link" href="signals-and-systems/03-fourier-series.html"><span class="num">03</span><span class="title">Fourier Series</span><span class="arrow">&rarr;</span></a>
-        <a class="demo-link" href="signals-and-systems/04-fourier-transform-filtering.html"><span class="num">04</span><span class="title">Fourier Transform &amp; Filtering</span><span class="arrow">&rarr;</span></a>
-        <a class="demo-link" href="signals-and-systems/05-sampling.html"><span class="num">05</span><span class="title">Sampling &amp; Reconstruction</span><span class="arrow">&rarr;</span></a>
-        <a class="demo-link" href="signals-and-systems/06-dft.html"><span class="num">06</span><span class="title">DFT &amp; Spectral Analysis</span><span class="arrow">&rarr;</span></a>
-        <a class="demo-link" href="signals-and-systems/07-z-transform.html"><span class="num">07</span><span class="title">Z-Transform &amp; Digital Filters</span><span class="arrow">&rarr;</span></a>
-        <a class="demo-link" href="signals-and-systems/08-laplace-transform.html"><span class="num">08</span><span class="title">Laplace Transform &amp; Stability</span><span class="arrow">&rarr;</span></a>
       </div>
-    </div>
+      <div class="course-actions">
+        <span class="summary-note">5 more demos below</span>
+        <a class="summary-jump" href="#course-ss">See full list <span class="jump-arrow">↓</span></a>
+      </div>
+    </article>
 
-    <div class="course wc">
+    <article class="course wc">
       <div class="course-bar"></div>
       <div class="course-header">
         <span class="icon">⌁</span>
         <div class="course-copy">
-          <h2>Wireless Communication</h2>
+          <h3>Wireless Communication</h3>
           <div class="course-meta">
             <span class="count">11 demos</span>
             <span class="ref">Proakis &amp; Salehi</span>
           </div>
         </div>
       </div>
-      <div class="demo-list">
+      <div class="course-preview">
         <a class="demo-link" href="wireless-comm/01-analog-modulation.html"><span class="num">01</span><span class="title">Analog Modulation</span><span class="arrow">&rarr;</span></a>
         <a class="demo-link" href="wireless-comm/02-digital-modulation.html"><span class="num">02</span><span class="title">Digital Modulation &amp; Constellation</span><span class="arrow">&rarr;</span></a>
         <a class="demo-link" href="wireless-comm/03-ber-curves.html"><span class="num">03</span><span class="title">BER Curves &amp; Comparison</span><span class="arrow">&rarr;</span></a>
-        <a class="demo-link" href="wireless-comm/04-pulse-shaping.html"><span class="num">04</span><span class="title">Pulse Shaping &amp; Eye Diagram</span><span class="arrow">&rarr;</span></a>
-        <a class="demo-link" href="wireless-comm/05-ofdm.html"><span class="num">05</span><span class="title">OFDM</span><span class="arrow">&rarr;</span></a>
-        <a class="demo-link" href="wireless-comm/06-channel-fading.html"><span class="num">06</span><span class="title">Channel Fading</span><span class="arrow">&rarr;</span></a>
-        <a class="demo-link" href="wireless-comm/07-link-budget.html"><span class="num">07</span><span class="title">Link Budget</span><span class="arrow">&rarr;</span></a>
-        <a class="demo-link" href="wireless-comm/08-shannon-capacity.html"><span class="num">08</span><span class="title">Shannon Capacity</span><span class="arrow">&rarr;</span></a>
-        <a class="demo-link" href="wireless-comm/09-multiplexing.html"><span class="num">09</span><span class="title">Multiplexing Techniques</span><span class="arrow">&rarr;</span></a>
-        <a class="demo-link" href="wireless-comm/10-spread-spectrum.html"><span class="num">10</span><span class="title">Spread Spectrum &amp; CDMA</span><span class="arrow">&rarr;</span></a>
-        <a class="demo-link" href="wireless-comm/11-equalization.html"><span class="num">11</span><span class="title">Channel Equalization</span><span class="arrow">&rarr;</span></a>
       </div>
-    </div>
+      <div class="course-actions">
+        <span class="summary-note">8 more demos below</span>
+        <a class="summary-jump" href="#course-wc">See full list <span class="jump-arrow">↓</span></a>
+      </div>
+    </article>
 
-    <div class="course rsp">
+    <article class="course rsp">
       <div class="course-bar"></div>
       <div class="course-header">
         <span class="icon">📡</span>
         <div class="course-copy">
-          <h2>Radar Signal Processing</h2>
+          <h3>Radar Signal Processing</h3>
           <div class="course-meta">
             <span class="count">12 demos</span>
             <span class="ref">Skolnik &middot; Richards</span>
           </div>
         </div>
       </div>
-      <div class="demo-list">
+      <div class="course-preview">
         <a class="demo-link" href="radar/01-radar-equation.html"><span class="num">01</span><span class="title">Radar Equation</span><span class="arrow">&rarr;</span></a>
         <a class="demo-link" href="radar/02-matched-filter.html"><span class="num">02</span><span class="title">Matched Filter</span><span class="arrow">&rarr;</span></a>
         <a class="demo-link" href="radar/03-fmcw-radar.html"><span class="num">03</span><span class="title">FMCW Radar</span><span class="arrow">&rarr;</span></a>
-        <a class="demo-link" href="radar/04-doppler-effect.html"><span class="num">04</span><span class="title">Doppler Effect</span><span class="arrow">&rarr;</span></a>
-        <a class="demo-link" href="radar/05-ambiguity-function.html"><span class="num">05</span><span class="title">Ambiguity Function</span><span class="arrow">&rarr;</span></a>
-        <a class="demo-link" href="radar/06-cfar.html"><span class="num">06</span><span class="title">CFAR Detection</span><span class="arrow">&rarr;</span></a>
-        <a class="demo-link" href="radar/07-mti-pulse-doppler.html"><span class="num">07</span><span class="title">MTI &amp; Pulse-Doppler</span><span class="arrow">&rarr;</span></a>
-        <a class="demo-link" href="radar/08-beamforming.html"><span class="num">08</span><span class="title">Array Beamforming</span><span class="arrow">&rarr;</span></a>
-        <a class="demo-link" href="radar/09-sar-imaging.html"><span class="num">09</span><span class="title">SAR Imaging</span><span class="arrow">&rarr;</span></a>
-        <a class="demo-link" href="radar/10-rcs-swerling.html"><span class="num">10</span><span class="title">RCS &amp; Swerling Models</span><span class="arrow">&rarr;</span></a>
-        <a class="demo-link" href="radar/11-target-tracking.html"><span class="num">11</span><span class="title">Target Tracking — KF &amp; EKF</span><span class="arrow">&rarr;</span></a>
-        <a class="demo-link" href="radar/12-radar-cube.html"><span class="num">12</span><span class="title">Radar Data Cube</span><span class="arrow">&rarr;</span></a>
       </div>
-    </div>
+      <div class="course-actions">
+        <span class="summary-note">9 more demos below</span>
+        <a class="summary-jump" href="#course-rsp">See full list <span class="jump-arrow">↓</span></a>
+      </div>
+    </article>
 
-    <div class="course dsp">
+    <article class="course dsp">
       <div class="course-bar"></div>
       <div class="course-header">
         <span class="icon">∑</span>
         <div class="course-copy">
-          <h2>DSP &amp; Signal Analysis</h2>
+          <h3>DSP &amp; Signal Analysis</h3>
           <div class="course-meta">
             <span class="count">3 demos</span>
             <span class="ref">Haykin &middot; Stoica &middot; Huang</span>
           </div>
         </div>
       </div>
-      <div class="demo-list">
+      <div class="course-preview">
         <a class="demo-link" href="dsp-signal-analysis/01-adaptive-filtering.html"><span class="num">01</span><span class="title">Adaptive Filtering</span><span class="arrow">&rarr;</span></a>
         <a class="demo-link" href="dsp-signal-analysis/02-spectral-estimation.html"><span class="num">02</span><span class="title">Spectral Estimation &amp; Chirp-Z</span><span class="arrow">&rarr;</span></a>
         <a class="demo-link" href="dsp-signal-analysis/03-emd-vmd.html"><span class="num">03</span><span class="title">EMD &amp; VMD Decomposition</span><span class="arrow">&rarr;</span></a>
       </div>
-    </div>
-
+      <div class="course-actions">
+        <span class="summary-note">Full set shown below</span>
+        <a class="summary-jump" href="#course-dsp">See full list <span class="jump-arrow">↓</span></a>
+      </div>
+    </article>
   </div>
+
+  <section class="course-detail-shell" aria-label="Full course demo lists">
+    <article class="course-detail-panel ss" id="course-ss">
+      <div class="course-detail-bar"></div>
+      <div class="course-detail-head">
+        <span class="icon">∿</span>
+        <div class="course-detail-copy">
+          <h3>Signals and Systems</h3>
+          <div class="course-detail-meta">
+            <span class="count">8 demos</span>
+            <span class="ref">Oppenheim &amp; Willsky</span>
+          </div>
+          <p class="course-detail-note">Full demo list for the course.</p>
+        </div>
+        <div class="course-detail-tools">
+          <a class="back-link" href="#catalog">Back to catalog <span class="jump-arrow">↑</span></a>
+        </div>
+      </div>
+      <div class="course-detail-grid">
+        <a class="detail-link" href="signals-and-systems/01-sinusoidal.html"><span class="detail-num">01</span><span class="detail-title">Sinusoidal Signals &amp; Phasors</span><span class="detail-arrow">&rarr;</span></a>
+        <a class="detail-link" href="signals-and-systems/02-convolution.html"><span class="detail-num">02</span><span class="detail-title">Convolution</span><span class="detail-arrow">&rarr;</span></a>
+        <a class="detail-link" href="signals-and-systems/03-fourier-series.html"><span class="detail-num">03</span><span class="detail-title">Fourier Series</span><span class="detail-arrow">&rarr;</span></a>
+        <a class="detail-link" href="signals-and-systems/04-fourier-transform-filtering.html"><span class="detail-num">04</span><span class="detail-title">Fourier Transform &amp; Filtering</span><span class="detail-arrow">&rarr;</span></a>
+        <a class="detail-link" href="signals-and-systems/05-sampling.html"><span class="detail-num">05</span><span class="detail-title">Sampling &amp; Reconstruction</span><span class="detail-arrow">&rarr;</span></a>
+        <a class="detail-link" href="signals-and-systems/06-dft.html"><span class="detail-num">06</span><span class="detail-title">DFT &amp; Spectral Analysis</span><span class="detail-arrow">&rarr;</span></a>
+        <a class="detail-link" href="signals-and-systems/07-z-transform.html"><span class="detail-num">07</span><span class="detail-title">Z-Transform &amp; Digital Filters</span><span class="detail-arrow">&rarr;</span></a>
+        <a class="detail-link" href="signals-and-systems/08-laplace-transform.html"><span class="detail-num">08</span><span class="detail-title">Laplace Transform &amp; Stability</span><span class="detail-arrow">&rarr;</span></a>
+      </div>
+    </article>
+
+    <article class="course-detail-panel wc" id="course-wc">
+      <div class="course-detail-bar"></div>
+      <div class="course-detail-head">
+        <span class="icon">⌁</span>
+        <div class="course-detail-copy">
+          <h3>Wireless Communication</h3>
+          <div class="course-detail-meta">
+            <span class="count">11 demos</span>
+            <span class="ref">Proakis &amp; Salehi</span>
+          </div>
+          <p class="course-detail-note">Full demo list for the course.</p>
+        </div>
+        <div class="course-detail-tools">
+          <a class="back-link" href="#catalog">Back to catalog <span class="jump-arrow">↑</span></a>
+        </div>
+      </div>
+      <div class="course-detail-grid">
+        <a class="detail-link" href="wireless-comm/01-analog-modulation.html"><span class="detail-num">01</span><span class="detail-title">Analog Modulation</span><span class="detail-arrow">&rarr;</span></a>
+        <a class="detail-link" href="wireless-comm/02-digital-modulation.html"><span class="detail-num">02</span><span class="detail-title">Digital Modulation &amp; Constellation</span><span class="detail-arrow">&rarr;</span></a>
+        <a class="detail-link" href="wireless-comm/03-ber-curves.html"><span class="detail-num">03</span><span class="detail-title">BER Curves &amp; Comparison</span><span class="detail-arrow">&rarr;</span></a>
+        <a class="detail-link" href="wireless-comm/04-pulse-shaping.html"><span class="detail-num">04</span><span class="detail-title">Pulse Shaping &amp; Eye Diagram</span><span class="detail-arrow">&rarr;</span></a>
+        <a class="detail-link" href="wireless-comm/05-ofdm.html"><span class="detail-num">05</span><span class="detail-title">OFDM</span><span class="detail-arrow">&rarr;</span></a>
+        <a class="detail-link" href="wireless-comm/06-channel-fading.html"><span class="detail-num">06</span><span class="detail-title">Channel Fading</span><span class="detail-arrow">&rarr;</span></a>
+        <a class="detail-link" href="wireless-comm/07-link-budget.html"><span class="detail-num">07</span><span class="detail-title">Link Budget</span><span class="detail-arrow">&rarr;</span></a>
+        <a class="detail-link" href="wireless-comm/08-shannon-capacity.html"><span class="detail-num">08</span><span class="detail-title">Shannon Capacity</span><span class="detail-arrow">&rarr;</span></a>
+        <a class="detail-link" href="wireless-comm/09-multiplexing.html"><span class="detail-num">09</span><span class="detail-title">Multiplexing Techniques</span><span class="detail-arrow">&rarr;</span></a>
+        <a class="detail-link" href="wireless-comm/10-spread-spectrum.html"><span class="detail-num">10</span><span class="detail-title">Spread Spectrum &amp; CDMA</span><span class="detail-arrow">&rarr;</span></a>
+        <a class="detail-link" href="wireless-comm/11-equalization.html"><span class="detail-num">11</span><span class="detail-title">Channel Equalization</span><span class="detail-arrow">&rarr;</span></a>
+      </div>
+    </article>
+
+    <article class="course-detail-panel rsp" id="course-rsp">
+      <div class="course-detail-bar"></div>
+      <div class="course-detail-head">
+        <span class="icon">📡</span>
+        <div class="course-detail-copy">
+          <h3>Radar Signal Processing</h3>
+          <div class="course-detail-meta">
+            <span class="count">12 demos</span>
+            <span class="ref">Skolnik &middot; Richards</span>
+          </div>
+          <p class="course-detail-note">Full demo list for the course.</p>
+        </div>
+        <div class="course-detail-tools">
+          <a class="back-link" href="#catalog">Back to catalog <span class="jump-arrow">↑</span></a>
+        </div>
+      </div>
+      <div class="course-detail-grid">
+        <a class="detail-link" href="radar/01-radar-equation.html"><span class="detail-num">01</span><span class="detail-title">Radar Equation</span><span class="detail-arrow">&rarr;</span></a>
+        <a class="detail-link" href="radar/02-matched-filter.html"><span class="detail-num">02</span><span class="detail-title">Matched Filter</span><span class="detail-arrow">&rarr;</span></a>
+        <a class="detail-link" href="radar/03-fmcw-radar.html"><span class="detail-num">03</span><span class="detail-title">FMCW Radar</span><span class="detail-arrow">&rarr;</span></a>
+        <a class="detail-link" href="radar/04-doppler-effect.html"><span class="detail-num">04</span><span class="detail-title">Doppler Effect</span><span class="detail-arrow">&rarr;</span></a>
+        <a class="detail-link" href="radar/05-ambiguity-function.html"><span class="detail-num">05</span><span class="detail-title">Ambiguity Function</span><span class="detail-arrow">&rarr;</span></a>
+        <a class="detail-link" href="radar/06-cfar.html"><span class="detail-num">06</span><span class="detail-title">CFAR Detection</span><span class="detail-arrow">&rarr;</span></a>
+        <a class="detail-link" href="radar/07-mti-pulse-doppler.html"><span class="detail-num">07</span><span class="detail-title">MTI &amp; Pulse-Doppler</span><span class="detail-arrow">&rarr;</span></a>
+        <a class="detail-link" href="radar/08-beamforming.html"><span class="detail-num">08</span><span class="detail-title">Array Beamforming</span><span class="detail-arrow">&rarr;</span></a>
+        <a class="detail-link" href="radar/09-sar-imaging.html"><span class="detail-num">09</span><span class="detail-title">SAR Imaging</span><span class="detail-arrow">&rarr;</span></a>
+        <a class="detail-link" href="radar/10-rcs-swerling.html"><span class="detail-num">10</span><span class="detail-title">RCS &amp; Swerling Models</span><span class="detail-arrow">&rarr;</span></a>
+        <a class="detail-link" href="radar/11-target-tracking.html"><span class="detail-num">11</span><span class="detail-title">Target Tracking — KF &amp; EKF</span><span class="detail-arrow">&rarr;</span></a>
+        <a class="detail-link" href="radar/12-radar-cube.html"><span class="detail-num">12</span><span class="detail-title">Radar Data Cube</span><span class="detail-arrow">&rarr;</span></a>
+      </div>
+    </article>
+
+    <article class="course-detail-panel dsp" id="course-dsp">
+      <div class="course-detail-bar"></div>
+      <div class="course-detail-head">
+        <span class="icon">∑</span>
+        <div class="course-detail-copy">
+          <h3>DSP &amp; Signal Analysis</h3>
+          <div class="course-detail-meta">
+            <span class="count">3 demos</span>
+            <span class="ref">Haykin &middot; Stoica &middot; Huang</span>
+          </div>
+          <p class="course-detail-note">Full demo list for the course.</p>
+        </div>
+        <div class="course-detail-tools">
+          <a class="back-link" href="#catalog">Back to catalog <span class="jump-arrow">↑</span></a>
+        </div>
+      </div>
+      <div class="course-detail-grid">
+        <a class="detail-link" href="dsp-signal-analysis/01-adaptive-filtering.html"><span class="detail-num">01</span><span class="detail-title">Adaptive Filtering</span><span class="detail-arrow">&rarr;</span></a>
+        <a class="detail-link" href="dsp-signal-analysis/02-spectral-estimation.html"><span class="detail-num">02</span><span class="detail-title">Spectral Estimation &amp; Chirp-Z</span><span class="detail-arrow">&rarr;</span></a>
+        <a class="detail-link" href="dsp-signal-analysis/03-emd-vmd.html"><span class="detail-num">03</span><span class="detail-title">EMD &amp; VMD Decomposition</span><span class="detail-arrow">&rarr;</span></a>
+      </div>
+    </article>
+  </section>
 </div>
 
 <div class="footer">
