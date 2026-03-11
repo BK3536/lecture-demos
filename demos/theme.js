@@ -70,6 +70,15 @@ function _relayoutPlots() {
   });
 }
 
+function _resizeVisiblePlots() {
+  if (typeof Plotly === 'undefined') return;
+  document.querySelectorAll('.plot').forEach(function(el) {
+    if (el.data) {
+      try { Plotly.Plots.resize(el); } catch(e) {}
+    }
+  });
+}
+
 /* ── Fullscreen toggle ───────────────────────────────── */
 function toggleFullscreen() {
   var c = document.querySelector('.container');
@@ -78,11 +87,7 @@ function toggleFullscreen() {
   _updateFullscreenIcon();
   // Trigger Plotly resize after layout change
   setTimeout(function() {
-    if (typeof Plotly !== 'undefined') {
-      document.querySelectorAll('.plot').forEach(function(el) {
-        if (el.data) try { Plotly.Plots.resize(el); } catch(e) {}
-      });
-    }
+    _resizeVisiblePlots();
   }, 100);
 }
 
@@ -95,9 +100,88 @@ function _updateFullscreenIcon() {
     : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>';
 }
 
+/* ── Per-plot focus mode ─────────────────────────────── */
+function _setPlotFocusButtonIcon(btn, active) {
+  if (!btn) return;
+  btn.innerHTML = active
+    ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>'
+    : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>';
+  btn.title = active ? 'Restore plot size' : 'Focus this plot';
+  btn.setAttribute('aria-label', btn.title);
+}
+
+function _clearPlotFocus() {
+  var plots = document.querySelector('.plots');
+  if (!plots || !plots.classList.contains('plot-focus-active')) return;
+  plots.classList.remove('plot-focus-active');
+  plots.querySelectorAll('.plot-shell').forEach(function(shell) {
+    shell.classList.remove('plot-focus-target');
+  });
+  plots.querySelectorAll('.plot-focus-btn').forEach(function(btn) {
+    _setPlotFocusButtonIcon(btn, false);
+  });
+  setTimeout(_resizeVisiblePlots, 100);
+}
+
+function togglePlotFocus(plotEl) {
+  var plots = document.querySelector('.plots');
+  if (!plots || !plotEl) return;
+  var shell = plotEl.closest('.plot-shell');
+  if (!shell) return;
+  var isActive = shell.classList.contains('plot-focus-target') && plots.classList.contains('plot-focus-active');
+
+  plots.querySelectorAll('.plot-shell').forEach(function(item) {
+    item.classList.remove('plot-focus-target');
+  });
+  plots.querySelectorAll('.plot-focus-btn').forEach(function(btn) {
+    _setPlotFocusButtonIcon(btn, false);
+  });
+
+  if (isActive) {
+    plots.classList.remove('plot-focus-active');
+  } else {
+    plots.classList.add('plot-focus-active');
+    shell.classList.add('plot-focus-target');
+    _setPlotFocusButtonIcon(shell.querySelector('.plot-focus-btn'), true);
+  }
+
+  setTimeout(_resizeVisiblePlots, 100);
+}
+
+function _injectPlotFocusControls() {
+  var plots = document.querySelector('.plots');
+  if (!plots) return;
+
+  Array.prototype.slice.call(plots.children).forEach(function(node) {
+    if (!node.classList || !node.classList.contains('plot')) return;
+    if (node.parentElement && node.parentElement.classList.contains('plot-shell')) return;
+
+    var shell = document.createElement('div');
+    shell.className = 'plot-shell';
+    node.parentNode.insertBefore(shell, node);
+    shell.appendChild(node);
+
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'plot-focus-btn';
+    _setPlotFocusButtonIcon(btn, false);
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      togglePlotFocus(node);
+    });
+    shell.appendChild(btn);
+  });
+}
+
 /* ── ESC to exit fullscreen ──────────────────────────── */
 document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape' && document.querySelector('.container.fs-active')) {
+  if (e.key !== 'Escape') return;
+  if (document.querySelector('.plots.plot-focus-active')) {
+    _clearPlotFocus();
+    return;
+  }
+  if (document.querySelector('.container.fs-active')) {
     toggleFullscreen();
   }
 });
@@ -122,13 +206,7 @@ function toggleMobileControls() {
   controls.classList.toggle('mobile-open');
   _updateMobileToggleIcon();
   // Resize plots after controls expand/collapse
-  setTimeout(function() {
-    if (typeof Plotly !== 'undefined') {
-      document.querySelectorAll('.plot').forEach(function(el) {
-        if (el.data) try { Plotly.Plots.resize(el); } catch(e) {}
-      });
-    }
-  }, 350);
+  setTimeout(_resizeVisiblePlots, 350);
 }
 
 function _updateMobileToggleIcon() {
@@ -157,4 +235,5 @@ document.addEventListener('DOMContentLoaded', function() {
   _updateToggleIcon();
   _injectFullscreenButton();
   _injectMobileControlsToggle();
+  _injectPlotFocusControls();
 });
