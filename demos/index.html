@@ -75,27 +75,7 @@
     display: flex;
     justify-content: space-between;
     gap: 1rem;
-    align-items: flex-start;
-  }
-
-  .hero-badge {
-    display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.45rem 0.85rem;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.12);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    color: #dbeafe;
-    font-size: 0.82rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    backdrop-filter: blur(8px);
-  }
-
-  .hero-copy {
-    max-width: 760px;
-    margin-top: 1rem;
   }
 
   .hero h1 {
@@ -103,56 +83,11 @@
     line-height: 1.05;
     letter-spacing: -0.04em;
     font-weight: 700;
-    margin-bottom: 0.85rem;
+    margin: 0;
   }
 
   .hero h1 span {
     color: #bfdbfe;
-  }
-
-  .hero p {
-    max-width: 680px;
-    font-size: 1rem;
-    color: rgba(219, 234, 254, 0.92);
-  }
-
-  .hero-meta {
-    margin-top: 1.35rem;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-    align-items: center;
-  }
-
-  .hero-chip,
-  .hero-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-    min-height: 40px;
-    padding: 0.65rem 1rem;
-    border-radius: 999px;
-    font-size: 0.92rem;
-    font-weight: 600;
-    text-decoration: none;
-    transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease;
-  }
-
-  .hero-chip {
-    background: rgba(255, 255, 255, 0.12);
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    color: #eff6ff;
-  }
-
-  .hero-link {
-    background: #ffffff;
-    color: var(--blue-700);
-    border: 1px solid rgba(255, 255, 255, 0.55);
-  }
-
-  .hero-link:hover,
-  .hero-chip:hover {
-    transform: translateY(-1px);
   }
 
   .hero .theme-toggle {
@@ -380,10 +315,6 @@
     .page-shell { padding: 1rem 0.9rem 2.5rem; }
     .hero { padding: 1.4rem 1.2rem 1.5rem; border-radius: 22px; }
     .hero-top { align-items: center; }
-    .hero-copy { margin-top: 0.9rem; }
-    .hero p { font-size: 0.94rem; }
-    .hero-meta { gap: 0.6rem; }
-    .hero-chip, .hero-link { width: 100%; justify-content: center; }
     .course-header { padding: 1rem 1rem 0.9rem; }
     .demo-list { padding: 0.45rem 0.45rem 0.55rem; }
   }
@@ -400,21 +331,8 @@
 <div class="page-shell">
   <section class="hero">
     <div class="hero-top">
-      <div class="hero-badge">REMI Lab · Interactive Teaching Demos</div>
-      <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"></button>
-    </div>
-
-    <div class="hero-copy">
       <h1>Interactive <span>Lecture Demos</span></h1>
-      <p>
-        Self-paced lecture demos for signals, wireless communication, radar signal processing, and DSP.
-        Designed to feel consistent with the main REMI Lab website: clean cards, blue accents, and lightweight static delivery.
-      </p>
-
-      <div class="hero-meta">
-        <div class="hero-chip">Courses curated for REMI lectures</div>
-        <a class="hero-link" href="https://remilab.cnu.ac.kr">Visit remilab.cnu.ac.kr</a>
-      </div>
+      <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"></button>
     </div>
   </section>
 
@@ -482,7 +400,7 @@
     <div class="course rsp">
       <div class="course-bar"></div>
       <div class="course-header">
-        <span class="icon">◌</span>
+        <span class="icon">📡</span>
         <div class="course-copy">
           <h2>Radar Signal Processing</h2>
           <div class="course-meta">
@@ -510,7 +428,7 @@
     <div class="course dsp">
       <div class="course-bar"></div>
       <div class="course-header">
-        <span class="icon">⋄</span>
+        <span class="icon">∑</span>
         <div class="course-copy">
           <h2>DSP &amp; Signal Analysis</h2>
           <div class="course-meta">
