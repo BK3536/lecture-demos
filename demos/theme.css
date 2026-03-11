@@ -22,7 +22,6 @@
 [data-theme="light"] .control-group h3 { color: var(--text-muted) !important; }
 [data-theme="light"] .header p { color: var(--text-secondary) !important; }
 [data-theme="light"] .plot { background: var(--bg-card) !important; }
-[data-theme="light"] .plot-shell { background: transparent !important; }
 [data-theme="light"] .info-box { background: var(--bg-control) !important; color: var(--text-secondary) !important; }
 [data-theme="light"] .info-box code { color: var(--accent) !important; }
 [data-theme="light"] label { color: var(--text-primary) !important; }
@@ -79,7 +78,7 @@
 .fullscreen-toggle:hover { color: var(--accent); border-color: var(--accent); background: rgba(96,165,250,0.08); }
 
 /* ── Per-plot focus controls ───────────────────────── */
-.plot-shell {
+.plot {
   position: relative;
   min-width: 0;
   min-height: 0;
@@ -105,7 +104,7 @@
   transition: opacity 0.15s, transform 0.15s, border-color 0.15s, background 0.15s;
 }
 
-.plot-shell:hover .plot-focus-btn,
+.plot:hover .plot-focus-btn,
 .plot-focus-btn:focus-visible {
   opacity: 1;
 }
@@ -126,17 +125,14 @@
   grid-template-rows: 1fr !important;
 }
 
-.plots.plot-focus-active .plot-shell {
+.plots.plot-focus-active .plot {
   display: none !important;
 }
 
-.plots.plot-focus-active .plot-shell.plot-focus-target {
+.plots.plot-focus-active .plot.plot-focus-target {
   display: block !important;
   min-height: calc(100vh - 125px);
-}
-
-.plots.plot-focus-active .plot-shell.plot-focus-target .plot {
-  height: 100% !important;
+  height: calc(100vh - 125px) !important;
 }
 
 /* ── Fullscreen mode ─────────────────────────────────── */
@@ -144,7 +140,10 @@
 .container.fs-active .controls { display: none !important; }
 .container.fs-active .plots { grid-template-columns: 1fr 1fr !important; height: calc(100vh - 60px) !important; }
 .container.fs-active .plots.plot-focus-active { grid-template-columns: 1fr !important; }
-.container.fs-active .plots.plot-focus-active .plot-shell.plot-focus-target { min-height: calc(100vh - 90px); }
+.container.fs-active .plots.plot-focus-active .plot.plot-focus-target {
+  min-height: calc(100vh - 90px);
+  height: calc(100vh - 90px) !important;
+}
 
 /* ── Mobile layout (<768px) ──────────────────────────── */
 @media (max-width: 768px) {
@@ -185,8 +184,9 @@
     width: 1.9rem;
     height: 1.9rem;
   }
-  .plots.plot-focus-active .plot-shell.plot-focus-target {
+  .plots.plot-focus-active .plot.plot-focus-target {
     min-height: calc(100vh - 110px);
+    height: calc(100vh - 110px) !important;
   }
 
   /* Index page */

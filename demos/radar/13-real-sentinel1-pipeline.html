@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+<link rel="stylesheet" href="../theme.css?v=4">
+<title>Real Sentinel-1 SAR Pipeline</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="../theme.js?v=4"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Pretendard', 'Inter', system-ui, -apple-system, sans-serif; background: #111827; color: #d1d5db; }
+  .header { padding: 1.2rem 2rem; background: #1f2937; border-bottom: 1px solid #374151; }
+  .header h1 { font-size: 1.4rem; font-weight: 600; }
+  .header p { font-size: 0.85rem; color: #9ca3af; margin-top: 0.3rem; }
+  .container { display: grid; grid-template-columns: 320px 1fr; height: calc(100vh - 80px); }
+  .controls { padding: 1.2rem; background: #1f2937; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; }
+  .control-group { background: #111827; border-radius: 8px; padding: 1rem; }
+  .control-group h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 0.7rem; }
+  label { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin-bottom: 0.35rem; }
+  label span.val { color: #60a5fa; font-family: monospace; }
+  input[type=range] { width: 100%; accent-color: #60a5fa; margin-bottom: 0.5rem; }
+  select { width: 100%; padding: 0.4rem; background: #1f2937; color: #d1d5db; border: 1px solid #374151; border-radius: 6px; font-size: 0.85rem; margin-bottom: 0.5rem; }
+  .plots { padding: 1rem; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 0.5rem; }
+  .plot { background: #1f2937; border-radius: 8px; }
+  .static-image-shell { position: relative; width: 100%; height: 100%; overflow: hidden; border-radius: 8px; background: #111827; }
+  .static-image-shell img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .static-image-head {
+    position: absolute; inset: 0 auto auto 0; right: 0;
+    padding: 0.75rem 0.95rem 0.55rem;
+    background: linear-gradient(180deg, rgba(15,23,42,0.9), rgba(15,23,42,0.0));
+    color: #e5e7eb; z-index: 3; pointer-events: none;
+  }
+  .static-image-head strong { display:block; font-size: 0.92rem; margin-bottom: 0.15rem; }
+  .static-image-head span { display:block; font-size: 0.74rem; color: #9ca3af; }
+  .info-box { background: #111827; border-radius: 8px; padding: 0.8rem 1rem; font-size: 0.8rem; line-height: 1.6; color: #9ca3af; }
+  .info-box code { color: #60a5fa; word-break: break-all; }
+  .metric { display: flex; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid #1f2937; font-size: 0.82rem; }
+  .metric:last-child { border-bottom: none; }
+  .metric .label { color: #9ca3af; }
+  .metric .value { color: #60a5fa; font-family: monospace; font-weight: 600; }
+  .status { font-size: 0.8rem; color: #9ca3af; }
+  .status.bad { color: #f87171; }
+  .status.ok { color: #34d399; }
+</style>
+</head>
+<body>
+<div class="header">
+  <a class="back-link" href="../index.html" title="All demos">&larr;</a>
+  <div class="header-title">
+    <h1>Real Sentinel-1 SAR Pipeline</h1>
+    <p>Actual D453 swath-10 data from <code>research/sar-rfi</code>: Level-0 echo → range compression → focused SAR image → project QC overview</p>
+  </div>
+  <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"></button>
+</div>
+<div class="container">
+  <div class="controls">
+    <div class="control-group">
+      <h3>Display</h3>
+      <label>Dynamic range below peak (dB) <span class="val" id="v-window">32</span></label>
+      <input type="range" id="window-db" min="12" max="60" step="2" value="32">
+      <label>Colormap</label>
+      <select id="colorscale">
+        <option value="Greys">Greys</option>
+        <option value="Cividis">Cividis</option>
+        <option value="Viridis">Viridis</option>
+        <option value="Turbo">Turbo</option>
+      </select>
+      <div class="status" id="load-status">Loading actual SAR pipeline asset…</div>
+    </div>
+
+    <div class="control-group">
+      <h3>Source</h3>
+      <div class="metric"><span class="label">Granule</span><span class="value">D453</span></div>
+      <div class="metric"><span class="label">Polarization</span><span class="value" id="m-pol">—</span></div>
+      <div class="metric"><span class="label">Swath</span><span class="value" id="m-swath">—</span></div>
+      <div class="metric"><span class="label">Platform vel.</span><span class="value" id="m-vel">—</span></div>
+      <div class="metric"><span class="label">Altitude</span><span class="value" id="m-alt">—</span></div>
+      <div class="metric"><span class="label">Focused shape</span><span class="value" id="m-shape">—</span></div>
+    </div>
+
+    <div class="control-group">
+      <h3>Focus metrics</h3>
+      <div class="metric"><span class="label">Azimuth IRW</span><span class="value" id="m-azirw">—</span></div>
+      <div class="metric"><span class="label">Range IRW</span><span class="value" id="m-rgirw">—</span></div>
+      <div class="metric"><span class="label">Azimuth PSLR</span><span class="value" id="m-azpslr">—</span></div>
+      <div class="metric"><span class="label">Range PSLR</span><span class="value" id="m-rgpslr">—</span></div>
+    </div>
+
+    <div class="info-box" id="source-box">
+      <strong>What you are seeing</strong><br>
+      This page uses an <strong>actual Sentinel-1 Level-0 sample</strong> already processed inside <code>research/sar-rfi</code>.<br><br>
+      The four panels are not synthetic toy targets:
+      <ol style="padding-left:1.1rem; margin-top:0.5rem;">
+        <li>decoded raw echo chunk</li>
+        <li>matched-filtered range compression</li>
+        <li>stitched focused SAR image</li>
+        <li>focused-image QC overview exported by the actual pipeline</li>
+      </ol>
+      <div style="margin-top:0.75rem;">Hover any pixel for coordinates / relative dB. Use the plot focus button to enlarge one panel.</div>
+    </div>
+  </div>
+
+  <div class="plots">
+    <div class="plot" id="plot-raw"></div>
+    <div class="plot" id="plot-rc"></div>
+    <div class="plot" id="plot-focused"></div>
+    <div class="plot" id="plot-geocoded"></div>
+  </div>
+</div>
+
+<script>
+var _t = THEMES[curTheme];
+var plotBg = _t.plotBg, paperBg = _t.paperBg, gridColor = _t.gridColor, textColor = _t.textColor;
+var DATA = null;
+
+function linspace(a, b, n) {
+  if (n <= 1) return [a];
+  const out = [];
+  for (let i = 0; i < n; i++) out.push(a + (b - a) * i / (n - 1));
+  return out;
+}
+
+function baseLayout(title, subtitle, xTitle, yTitle) {
+  return {
+    paper_bgcolor: paperBg,
+    plot_bgcolor: plotBg,
+    font: { color: textColor, size: 11 },
+    margin: { t: 54, r: 16, b: 48, l: 56 },
+    title: { text: title + '<br><span style="font-size:11px;color:' + textColor + ';opacity:0.82">' + subtitle + '</span>', x: 0.03, y: 0.98, xanchor: 'left' },
+    xaxis: { title: xTitle, gridcolor: gridColor, zerolinecolor: _t.zeroLine },
+    yaxis: { title: yTitle, gridcolor: gridColor, zerolinecolor: _t.zeroLine },
+  };
+}
+
+function buildTrace(panel, windowDb, colorscale) {
+  const z = panel.z_rel_db_tenths.map(row => row.map(v => v * panel.scale_db));
+  const zmax = panel.zmax_rel_db != null ? panel.zmax_rel_db : 0;
+  const zmin = Math.max(panel.zmin_rel_db != null ? panel.zmin_rel_db : -windowDb, zmax - windowDb);
+  const x = panel.x_extent ? linspace(panel.x_extent[0], panel.x_extent[1], panel.shape[1]) : undefined;
+  const y = panel.y_extent ? linspace(panel.y_extent[0], panel.y_extent[1], panel.shape[0]) : undefined;
+  const trace = {
+    type: 'heatmap',
+    z: z,
+    x: x,
+    y: y,
+    colorscale: colorscale,
+    zmin: zmin,
+    zmax: zmax,
+    showscale: false,
+    hovertemplate: panel.x_label + ': %{x:.2f}<br>' + panel.y_label + ': %{y:.2f}<br>rel. intensity: %{z:.1f} dB<extra></extra>',
+  };
+  if (panel.key === 'geocoded') {
+    trace.hovertemplate = 'Longitude: %{x:.3f}<br>Latitude: %{y:.3f}<br>rel. intensity: %{z:.1f} dB<extra></extra>';
+  }
+  return trace;
+}
+
+function renderAll() {
+  if (!DATA) return;
+  const windowDb = parseFloat(document.getElementById('window-db').value);
+  const colorscale = document.getElementById('colorscale').value;
+  document.getElementById('v-window').textContent = windowDb.toFixed(0);
+
+    for (const panel of DATA.panels) {
+      if (panel.key === 'geocoded') continue;
+      const trace = buildTrace(panel, windowDb, colorscale);
+      const layout = baseLayout(panel.title, panel.subtitle, panel.x_label, panel.y_label);
+      Plotly.react('plot-' + (panel.key === 'range_compressed' ? 'rc' : panel.key), [trace], layout, {displayModeBar: true, responsive: true});
+    }
+
+    document.getElementById('plot-geocoded').innerHTML = `
+      <div class="static-image-shell">
+        <div class="static-image-head">
+          <strong>Focused-image QC overview (project-rendered)</strong>
+          <span>Actual overview exported by the sar-rfi focusing pipeline for the same D453 swath-10 scene</span>
+        </div>
+        <img src="./assets/d453_focused_overview.png" alt="Focused Sentinel-1 SAR QC overview for D453 swath-10">
+      </div>
+    `;
+
+    if (typeof _injectPlotFocusControls === 'function') _injectPlotFocusControls();
+  }
+
+function fillMetrics() {
+  const source = DATA.source || {};
+  const metrics = DATA.metrics || {};
+  document.getElementById('m-pol').textContent = source.polarization || '—';
+  document.getElementById('m-swath').textContent = source.swath != null ? String(source.swath) : '—';
+  document.getElementById('m-vel').textContent = metrics.platform_velocity_mps != null ? metrics.platform_velocity_mps.toFixed(1) + ' m/s' : '—';
+  document.getElementById('m-alt').textContent = metrics.satellite_altitude_m != null ? (metrics.satellite_altitude_m / 1000).toFixed(1) + ' km' : '—';
+  document.getElementById('m-shape').textContent = Array.isArray(metrics.stitched_shape) ? metrics.stitched_shape.join(' × ') : '—';
+  document.getElementById('m-azirw').textContent = metrics.az_irw_px != null ? metrics.az_irw_px.toFixed(1) + ' px' : '—';
+  document.getElementById('m-rgirw').textContent = metrics.rg_irw_px != null ? metrics.rg_irw_px.toFixed(1) + ' px' : '—';
+  document.getElementById('m-azpslr').textContent = metrics.az_pslr_db != null ? metrics.az_pslr_db.toFixed(2) + ' dB' : '—';
+  document.getElementById('m-rgpslr').textContent = metrics.rg_pslr_db != null ? metrics.rg_pslr_db.toFixed(2) + ' dB' : '—';
+
+  document.getElementById('source-box').innerHTML = `
+    <strong>Actual source inside <code>research/sar-rfi</code></strong><br>
+    Granule: <code>${source.granule || 'unknown'}</code><br>
+    L0 input: <code>${source.l0dat || 'unknown'}</code><br>
+    Quicklook arrays: <code>${source.raw_quicklook_npz || 'unknown'}</code><br>
+    Focused image: <code>${source.focused_npz || 'unknown'}</code><br>
+    Geocoded grid: <code>${source.geocode_npz || 'unknown'}</code><br><br>
+    This page intentionally excludes the interference-analysis part of sar-rfi and only shows the real SAR image-formation path. The geocoded grid is kept as source metadata, while the visible fourth panel uses the project-rendered focus overview because it is more legible for lecture use.
+  `;
+}
+
+async function init() {
+  const status = document.getElementById('load-status');
+  try {
+    const res = await fetch('./assets/real_sar_pipeline_d453.json');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    DATA = await res.json();
+    fillMetrics();
+    renderAll();
+    status.textContent = 'Loaded actual D453 SAR pipeline asset.';
+    status.className = 'status ok';
+  } catch (err) {
+    console.error(err);
+    status.textContent = 'Failed to load SAR asset: ' + err.message;
+    status.className = 'status bad';
+  }
+}
+
+document.getElementById('window-db').addEventListener('input', renderAll);
+document.getElementById('colorscale').addEventListener('change', renderAll);
+window.addEventListener('resize', function(){ if (DATA) renderAll(); });
+init();
+</script>
+</body>
+</html>

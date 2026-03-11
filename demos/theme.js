@@ -74,6 +74,8 @@ function _resizeVisiblePlots() {
   if (typeof Plotly === 'undefined') return;
   document.querySelectorAll('.plot').forEach(function(el) {
     if (el.data) {
+      el.style.width = '';
+      el.style.height = '';
       try { Plotly.Plots.resize(el); } catch(e) {}
     }
   });
@@ -114,8 +116,8 @@ function _clearPlotFocus() {
   var plots = document.querySelector('.plots');
   if (!plots || !plots.classList.contains('plot-focus-active')) return;
   plots.classList.remove('plot-focus-active');
-  plots.querySelectorAll('.plot-shell').forEach(function(shell) {
-    shell.classList.remove('plot-focus-target');
+  plots.querySelectorAll('.plot').forEach(function(plot) {
+    plot.classList.remove('plot-focus-target');
   });
   plots.querySelectorAll('.plot-focus-btn').forEach(function(btn) {
     _setPlotFocusButtonIcon(btn, false);
@@ -126,11 +128,9 @@ function _clearPlotFocus() {
 function togglePlotFocus(plotEl) {
   var plots = document.querySelector('.plots');
   if (!plots || !plotEl) return;
-  var shell = plotEl.closest('.plot-shell');
-  if (!shell) return;
-  var isActive = shell.classList.contains('plot-focus-target') && plots.classList.contains('plot-focus-active');
+  var isActive = plotEl.classList.contains('plot-focus-target') && plots.classList.contains('plot-focus-active');
 
-  plots.querySelectorAll('.plot-shell').forEach(function(item) {
+  plots.querySelectorAll('.plot').forEach(function(item) {
     item.classList.remove('plot-focus-target');
   });
   plots.querySelectorAll('.plot-focus-btn').forEach(function(btn) {
@@ -141,8 +141,8 @@ function togglePlotFocus(plotEl) {
     plots.classList.remove('plot-focus-active');
   } else {
     plots.classList.add('plot-focus-active');
-    shell.classList.add('plot-focus-target');
-    _setPlotFocusButtonIcon(shell.querySelector('.plot-focus-btn'), true);
+    plotEl.classList.add('plot-focus-target');
+    _setPlotFocusButtonIcon(plotEl.querySelector('.plot-focus-btn'), true);
   }
 
   setTimeout(_resizeVisiblePlots, 100);
@@ -152,15 +152,8 @@ function _injectPlotFocusControls() {
   var plots = document.querySelector('.plots');
   if (!plots) return;
 
-  Array.prototype.slice.call(plots.children).forEach(function(node) {
-    if (!node.classList || !node.classList.contains('plot')) return;
-    if (node.parentElement && node.parentElement.classList.contains('plot-shell')) return;
-
-    var shell = document.createElement('div');
-    shell.className = 'plot-shell';
-    node.parentNode.insertBefore(shell, node);
-    shell.appendChild(node);
-
+  Array.prototype.slice.call(plots.querySelectorAll('.plot')).forEach(function(node) {
+    if (node.querySelector('.plot-focus-btn')) return;
     var btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'plot-focus-btn';
@@ -170,7 +163,7 @@ function _injectPlotFocusControls() {
       e.stopPropagation();
       togglePlotFocus(node);
     });
-    shell.appendChild(btn);
+    node.appendChild(btn);
   });
 }
 
