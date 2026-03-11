@@ -159,6 +159,7 @@
     transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
     display: flex;
     flex-direction: column;
+    min-height: 212px;
   }
 
   .course:hover {
@@ -242,14 +243,12 @@
     color: var(--text-secondary, #64748b);
   }
 
-  .course-preview {
-    padding: 0.55rem 0.6rem 0.25rem;
-    display: grid;
-    gap: 0.3rem;
-    flex: 1;
+  .course-summary {
+    padding: 0.85rem 1rem 0;
+    color: var(--text-secondary, #64748b);
+    font-size: 0.88rem;
   }
 
-  .demo-link,
   .detail-link {
     display: flex;
     align-items: center;
@@ -314,10 +313,11 @@
   .course-actions {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
     gap: 1rem;
-    padding: 0.8rem 1rem 1rem;
+    padding: 0.95rem 1rem 1rem;
     border-top: 1px solid var(--border, #e2e8f0);
+    margin-top: auto;
   }
 
   .summary-jump,
@@ -431,7 +431,7 @@
     .hero-top { align-items: center; }
     .course-header,
     .course-detail-head { padding: 1rem 1rem 0.9rem; }
-    .course-preview { padding: 0.45rem 0.45rem 0.2rem; }
+    .course-summary { padding: 0.75rem 1rem 0; }
     .course-actions,
     .course-detail-tools { flex-direction: column; align-items: stretch; }
     .summary-jump,
@@ -474,14 +474,11 @@
           </div>
         </div>
       </div>
-      <div class="course-preview">
-        <a class="demo-link" href="signals-and-systems/01-sinusoidal.html"><span class="num">01</span><span class="title">Sinusoidal Signals &amp; Phasors</span><span class="arrow">&rarr;</span></a>
-        <a class="demo-link" href="signals-and-systems/02-convolution.html"><span class="num">02</span><span class="title">Convolution</span><span class="arrow">&rarr;</span></a>
-        <a class="demo-link" href="signals-and-systems/03-fourier-series.html"><span class="num">03</span><span class="title">Fourier Series</span><span class="arrow">&rarr;</span></a>
+      <div class="course-summary">
+        <span class="summary-note">Navigator card — jump to the full demo list below.</span>
       </div>
       <div class="course-actions">
-        <span class="summary-note">5 more demos below</span>
-        <a class="summary-jump" href="#course-ss">See full list <span class="jump-arrow">↓</span></a>
+        <a class="summary-jump" href="#course-ss">Go to demos <span class="jump-arrow">↓</span></a>
       </div>
     </article>
 
@@ -497,14 +494,11 @@
           </div>
         </div>
       </div>
-      <div class="course-preview">
-        <a class="demo-link" href="wireless-comm/01-analog-modulation.html"><span class="num">01</span><span class="title">Analog Modulation</span><span class="arrow">&rarr;</span></a>
-        <a class="demo-link" href="wireless-comm/02-digital-modulation.html"><span class="num">02</span><span class="title">Digital Modulation &amp; Constellation</span><span class="arrow">&rarr;</span></a>
-        <a class="demo-link" href="wireless-comm/03-ber-curves.html"><span class="num">03</span><span class="title">BER Curves &amp; Comparison</span><span class="arrow">&rarr;</span></a>
+      <div class="course-summary">
+        <span class="summary-note">Navigator card — jump to the full demo list below.</span>
       </div>
       <div class="course-actions">
-        <span class="summary-note">8 more demos below</span>
-        <a class="summary-jump" href="#course-wc">See full list <span class="jump-arrow">↓</span></a>
+        <a class="summary-jump" href="#course-wc">Go to demos <span class="jump-arrow">↓</span></a>
       </div>
     </article>
 
@@ -520,14 +514,11 @@
           </div>
         </div>
       </div>
-      <div class="course-preview">
-        <a class="demo-link" href="radar/01-radar-equation.html"><span class="num">01</span><span class="title">Radar Equation</span><span class="arrow">&rarr;</span></a>
-        <a class="demo-link" href="radar/02-matched-filter.html"><span class="num">02</span><span class="title">Matched Filter</span><span class="arrow">&rarr;</span></a>
-        <a class="demo-link" href="radar/03-fmcw-radar.html"><span class="num">03</span><span class="title">FMCW Radar</span><span class="arrow">&rarr;</span></a>
+      <div class="course-summary">
+        <span class="summary-note">Navigator card — jump to the full demo list below.</span>
       </div>
       <div class="course-actions">
-        <span class="summary-note">9 more demos below</span>
-        <a class="summary-jump" href="#course-rsp">See full list <span class="jump-arrow">↓</span></a>
+        <a class="summary-jump" href="#course-rsp">Go to demos <span class="jump-arrow">↓</span></a>
       </div>
     </article>
 
@@ -543,14 +534,11 @@
           </div>
         </div>
       </div>
-      <div class="course-preview">
-        <a class="demo-link" href="dsp-signal-analysis/01-adaptive-filtering.html"><span class="num">01</span><span class="title">Adaptive Filtering</span><span class="arrow">&rarr;</span></a>
-        <a class="demo-link" href="dsp-signal-analysis/02-spectral-estimation.html"><span class="num">02</span><span class="title">Spectral Estimation &amp; Chirp-Z</span><span class="arrow">&rarr;</span></a>
-        <a class="demo-link" href="dsp-signal-analysis/03-emd-vmd.html"><span class="num">03</span><span class="title">EMD &amp; VMD Decomposition</span><span class="arrow">&rarr;</span></a>
+      <div class="course-summary">
+        <span class="summary-note">Navigator card — jump to the full demo list below.</span>
       </div>
       <div class="course-actions">
-        <span class="summary-note">Full set shown below</span>
-        <a class="summary-jump" href="#course-dsp">See full list <span class="jump-arrow">↓</span></a>
+        <a class="summary-jump" href="#course-dsp">Go to demos <span class="jump-arrow">↓</span></a>
       </div>
     </article>
   </div>
