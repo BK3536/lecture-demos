@@ -28,20 +28,20 @@ def transform_file(filepath):
     if inter_link in html:
         html = html.replace(
             inter_link,
-            inter_link + f'\n<link rel="stylesheet" href="{prefix}theme.css?v=2">'
+            inter_link + f'\n<link rel="stylesheet" href="{prefix}theme.css?v=3">'
         )
 
     # 2. Add theme.js script
     if is_index:
         # For index: add before </head>
-        html = html.replace('</style>\n</head>', f'</style>\n<script src="{prefix}theme.js?v=2"></script>\n</head>')
+        html = html.replace('</style>\n</head>', f'</style>\n<script src="{prefix}theme.js?v=3"></script>\n</head>')
     else:
         # For demos: add after Plotly script tag
         plotly_tag = '<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>'
         if plotly_tag in html:
             html = html.replace(
                 plotly_tag,
-                plotly_tag + f'\n<script src="{prefix}theme.js?v=2"></script>'
+                plotly_tag + f'\n<script src="{prefix}theme.js?v=3"></script>'
             )
 
     # 3. Replace the plotBg/lo const lines with theme-aware versions (demos only)
