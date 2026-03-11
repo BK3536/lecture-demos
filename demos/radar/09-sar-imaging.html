@@ -22,7 +22,6 @@
   label { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin-bottom: 0.3rem; }
   label span.val { color: #60a5fa; font-family: monospace; }
   input[type=range] { width: 100%; accent-color: #60a5fa; margin-bottom: 0.5rem; }
-  select { width: 100%; padding: 0.4rem; background: #1f2937; color: #d1d5db; border: 1px solid #374151; border-radius: 6px; font-size: 0.85rem; margin-bottom: 0.5rem; }
   .plots { padding: 1rem; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 0.5rem; }
   .plot { background: #1f2937; border-radius: 8px; }
   .info-box { background: #111827; border-radius: 8px; padding: 0.8rem 1rem; font-size: 0.8rem; line-height: 1.6; color: #9ca3af; }
@@ -31,8 +30,6 @@
   .metric:last-child { border-bottom: none; }
   .metric .label { color: #9ca3af; }
   .metric .value { color: #60a5fa; font-family: monospace; font-weight: 600; }
-  .btn { width: 100%; padding: 0.5rem; background: #60a5fa; color: #111827; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.85rem; }
-  .btn:hover { background: #7dd3fc; }
   .checkbox-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; margin-bottom: 0.4rem; }
   .checkbox-row input[type=checkbox] { accent-color: #60a5fa; width: 14px; height: 14px; }
 </style>
@@ -42,7 +39,7 @@
   <a class="back-link" href="../index.html" title="All demos">&larr;</a>
   <div class="header-title">
     <h1>SAR Imaging</h1>
-    <p>Cumming &amp; Wong &mdash; Synthetic Aperture Radar</p>
+    <p>Scaled discrete stripmap model — raw echo → range compression → azimuth compression → point-spread function</p>
   </div>
   <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"></button>
 </div>
@@ -50,13 +47,13 @@
   <div class="controls">
     <div class="control-group">
       <h3>Scene</h3>
-      <label>Point targets (3&times;3 grid) <span class="val" id="v-ntgt">3</span></label>
+      <label>Point targets (3×3 grid) <span class="val" id="v-ntgt">3</span></label>
       <input type="range" id="ntgt" min="1" max="9" step="1" value="3">
-      <label>Range spread (m) <span class="val" id="v-rspread">600</span></label>
+      <label>Target spread (m) <span class="val" id="v-rspread">600</span></label>
       <input type="range" id="rspread" min="100" max="1500" step="50" value="600">
     </div>
     <div class="control-group">
-      <h3>Platform &amp; Radar</h3>
+      <h3>Radar</h3>
       <label>Platform velocity (m/s) <span class="val" id="v-vel">150</span></label>
       <input type="range" id="vel" min="50" max="300" step="10" value="150">
       <label>Chirp bandwidth (MHz) <span class="val" id="v-bw">80</span></label>
@@ -65,7 +62,7 @@
       <input type="range" id="fc" min="1" max="10" step="0.1" value="5.3">
       <label>Antenna length (m) <span class="val" id="v-ant">3</span></label>
       <input type="range" id="ant" min="0.5" max="10" step="0.5" value="3">
-      <label>Scene range R0 (km) <span class="val" id="v-r0">800</span></label>
+      <label>Reference slant range R0 (km) <span class="val" id="v-r0">800</span></label>
       <input type="range" id="r0" min="200" max="2000" step="50" value="800">
     </div>
     <div class="control-group">
@@ -74,20 +71,22 @@
       <div class="checkbox-row"><input type="checkbox" id="do-ac" checked><label for="do-ac" style="margin:0">Azimuth compression</label></div>
     </div>
     <div class="control-group">
-      <h3>Resolution</h3>
-      <div class="metric"><span class="label">Range res. &Delta;r</span><span class="value" id="m-dr">—</span></div>
-      <div class="metric"><span class="label">Azimuth res. &Delta;az</span><span class="value" id="m-daz">—</span></div>
-      <div class="metric"><span class="label">Synth. aperture</span><span class="value" id="m-lsa">—</span></div>
-      <div class="metric"><span class="label">SAR gain</span><span class="value" id="m-gain">—</span></div>
+      <h3>Measured resolution</h3>
+      <div class="metric"><span class="label">Range res. Δr</span><span class="value" id="m-dr">—</span></div>
+      <div class="metric"><span class="label">Azimuth res. Δaz</span><span class="value" id="m-daz">—</span></div>
+      <div class="metric"><span class="label">Eq. aperture</span><span class="value" id="m-lsa">—</span></div>
+      <div class="metric"><span class="label">Compression gain</span><span class="value" id="m-gain">—</span></div>
     </div>
     <div class="info-box">
-      <strong>SAR Resolution</strong><br>
-      <code>&Delta;r = c / (2B)</code> &mdash; range<br>
-      <code>&Delta;az = D / 2</code> &mdash; azimuth (real aperture)<br>
-      <code>&Delta;az = &lambda;R / (2L<sub>sa</sub>)</code> &mdash; SAR focused<br><br>
-      Raw phase: <code>&phi; = 4&pi;R(&eta;)/&lambda;</code><br>
-      where <code>R(&eta;) = &radic;(R0&sup2; + (v&eta;)&sup2;)</code><br><br>
-      SAR gain: <code>L<sub>sa</sub>/D</code> &mdash; coherent integration over synthetic aperture
+      <strong>Teaching-model note</strong><br>
+      This demo uses a <strong>scaled discrete baseband model</strong> instead of orbital geometry, so the browser can render the SAR chain cleanly and reproducibly. Each point target is blurred by a range chirp and an azimuth chirp, then recovered with matched filters.<br><br>
+      What to look for:
+      <ol style="padding-left:1.1rem; margin-top:0.45rem;">
+        <li><code>Raw echo</code> is unfocused in both dimensions.</li>
+        <li><code>After range compression</code> sharpens only the range axis.</li>
+        <li><code>Focused SAR image</code> sharpens both range and azimuth.</li>
+        <li><code>PSF</code> shows the isolated point response for the same settings.</li>
+      </ol>
     </div>
   </div>
   <div class="plots">
@@ -98,78 +97,177 @@
   </div>
 </div>
 <script>
-var _t=THEMES[curTheme];var plotBg=_t.plotBg,paperBg=_t.paperBg,gridColor=_t.gridColor,textColor=_t.textColor;
-var lo={paper_bgcolor:paperBg,plot_bgcolor:plotBg,font:{color:textColor,size:11},margin:{t:40,r:16,b:40,l:50},xaxis:{gridcolor:gridColor,zerolinecolor:_t.zeroLine},yaxis:{gridcolor:gridColor,zerolinecolor:_t.zeroLine}};
-
+var _t = THEMES[curTheme];
+var plotBg = _t.plotBg, paperBg = _t.paperBg, gridColor = _t.gridColor, textColor = _t.textColor;
+var lo = {paper_bgcolor:paperBg, plot_bgcolor:plotBg, font:{color:textColor,size:11}, margin:{t:44,r:16,b:42,l:54}, xaxis:{gridcolor:gridColor, zerolinecolor:_t.zeroLine}, yaxis:{gridcolor:gridColor, zerolinecolor:_t.zeroLine}};
 const c = 3e8;
-const NR = 128;  // range samples
-const NA = 256;  // azimuth (slow time) samples
 
 function linspace(a, b, n) {
+  if (n <= 1) return [a];
   const arr = [];
   for (let i = 0; i < n; i++) arr.push(a + (b - a) * i / (n - 1));
   return arr;
 }
 
-function fft(re, im) {
-  // Cooley-Tukey radix-2 FFT in-place
-  const n = re.length;
-  if (n <= 1) return;
-  // bit-reverse permutation
-  let j = 0;
-  for (let i = 1; i < n; i++) {
-    let bit = n >> 1;
-    for (; j & bit; bit >>= 1) j ^= bit;
-    j ^= bit;
-    if (i < j) {
-      [re[i], re[j]] = [re[j], re[i]];
-      [im[i], im[j]] = [im[j], im[i]];
-    }
+function nextPow2(v) {
+  let n = 1;
+  while (n < v) n <<= 1;
+  return n;
+}
+
+function alloc2D(rows, cols, fill = 0) {
+  return Array.from({length: rows}, () => new Array(cols).fill(fill));
+}
+
+function nearestIndex(arr, value) {
+  let best = 0, err = Infinity;
+  for (let i = 0; i < arr.length; i++) {
+    const e = Math.abs(arr[i] - value);
+    if (e < err) { err = e; best = i; }
   }
-  for (let len = 2; len <= n; len <<= 1) {
-    const ang = -2 * Math.PI / len;
-    const wre = Math.cos(ang), wim = Math.sin(ang);
-    for (let i = 0; i < n; i += len) {
-      let cur_re = 1, cur_im = 0;
-      for (let k = 0; k < len / 2; k++) {
-        const u_re = re[i + k], u_im = im[i + k];
-        const v_re = re[i + k + len/2] * cur_re - im[i + k + len/2] * cur_im;
-        const v_im = re[i + k + len/2] * cur_im + im[i + k + len/2] * cur_re;
-        re[i + k] = u_re + v_re; im[i + k] = u_im + v_im;
-        re[i + k + len/2] = u_re - v_re; im[i + k + len/2] = u_im - v_im;
-        const new_re = cur_re * wre - cur_im * wim;
-        cur_im = cur_re * wim + cur_im * wre;
-        cur_re = new_re;
-      }
-    }
-  }
+  return best;
 }
 
-function ifft(re, im) {
-  // IFFT = conjugate, FFT, conjugate, divide by N
-  for (let i = 0; i < im.length; i++) im[i] = -im[i];
-  fft(re, im);
-  for (let i = 0; i < im.length; i++) { im[i] = -im[i] / re.length; re[i] /= re.length; }
+function normalizeReal2D(z) {
+  let peak = 1e-9;
+  for (const row of z) for (const v of row) peak = Math.max(peak, Math.abs(v));
+  return z.map(row => row.map(v => v / peak));
 }
 
-function fftshift1d(arr) {
-  const n = arr.length, h = Math.floor(n / 2);
-  return arr.slice(h).concat(arr.slice(0, h));
-}
-
-function makeHeatmap(data2d) {
-  // data2d[azimuth][range] -> compute magnitude
-  const rows = data2d.length, cols = data2d[0].re.length;
+function magDb2D(re, im) {
   const z = [];
-  for (let a = 0; a < rows; a++) {
+  let peak = 1e-12;
+  for (let a = 0; a < re.length; a++) {
     const row = [];
-    for (let r = 0; r < cols; r++) {
-      const mag = Math.sqrt(data2d[a].re[r] ** 2 + data2d[a].im[r] ** 2);
-      row.push(20 * Math.log10(Math.max(mag, 1e-10)));
+    for (let r = 0; r < re[a].length; r++) {
+      const mag = Math.hypot(re[a][r], im[a][r]);
+      peak = Math.max(peak, mag);
+      row.push(mag);
     }
     z.push(row);
   }
-  return z;
+  return z.map(row => row.map(v => 20 * Math.log10(Math.max(v / peak, 1e-12))));
+}
+
+function widthAtLevel(cut, levelDb, spacing) {
+  let peakIdx = 0;
+  for (let i = 1; i < cut.length; i++) if (cut[i] > cut[peakIdx]) peakIdx = i;
+  let left = peakIdx;
+  while (left > 0 && cut[left] >= levelDb) left--;
+  let right = peakIdx;
+  while (right < cut.length - 1 && cut[right] >= levelDb) right++;
+  return Math.max(spacing, (right - left) * spacing);
+}
+
+function buildChirpKernel(length, cycles, sign) {
+  const re = new Array(length).fill(0);
+  const im = new Array(length).fill(0);
+  const center = (length - 1) / 2;
+  let energy = 0;
+  for (let i = 0; i < length; i++) {
+    const x = center > 0 ? (i - center) / center : 0;
+    const w = length <= 1 ? 1 : 0.54 - 0.46 * Math.cos(2 * Math.PI * i / (length - 1));
+    const phase = sign * Math.PI * cycles * x * x;
+    re[i] = w * Math.cos(phase);
+    im[i] = w * Math.sin(phase);
+    energy += re[i] * re[i] + im[i] * im[i];
+  }
+  return { re, im, half: center, energy: Math.max(energy, 1e-9) };
+}
+
+function addTargetResponse(rawRe, rawIm, ia0, ir0, amp, azKernel, rgKernel) {
+  for (let da = -azKernel.half; da <= azKernel.half; da++) {
+    const ia = ia0 + da;
+    if (ia < 0 || ia >= rawRe.length) continue;
+    const azr = azKernel.re[da + azKernel.half];
+    const azi = azKernel.im[da + azKernel.half];
+    for (let dr = -rgKernel.half; dr <= rgKernel.half; dr++) {
+      const ir = ir0 + dr;
+      if (ir < 0 || ir >= rawRe[0].length) continue;
+      const rgr = rgKernel.re[dr + rgKernel.half];
+      const rgi = rgKernel.im[dr + rgKernel.half];
+      rawRe[ia][ir] += amp * (azr * rgr - azi * rgi);
+      rawIm[ia][ir] += amp * (azr * rgi + azi * rgr);
+    }
+  }
+}
+
+function matchedFilterRows(srcRe, srcIm, kernel) {
+  const rows = srcRe.length;
+  const cols = srcRe[0].length;
+  const outRe = alloc2D(rows, cols);
+  const outIm = alloc2D(rows, cols);
+  for (let a = 0; a < rows; a++) {
+    for (let r = 0; r < cols; r++) {
+      let accRe = 0, accIm = 0;
+      for (let k = -kernel.half; k <= kernel.half; k++) {
+        const idx = r + k;
+        if (idx < 0 || idx >= cols) continue;
+        const xr = srcRe[a][idx];
+        const xi = srcIm[a][idx];
+        const hr = kernel.re[k + kernel.half];
+        const hi = -kernel.im[k + kernel.half];
+        accRe += xr * hr - xi * hi;
+        accIm += xr * hi + xi * hr;
+      }
+      outRe[a][r] = accRe / kernel.energy;
+      outIm[a][r] = accIm / kernel.energy;
+    }
+  }
+  return { re: outRe, im: outIm };
+}
+
+function matchedFilterCols(srcRe, srcIm, kernel) {
+  const rows = srcRe.length;
+  const cols = srcRe[0].length;
+  const outRe = alloc2D(rows, cols);
+  const outIm = alloc2D(rows, cols);
+  for (let a = 0; a < rows; a++) {
+    for (let r = 0; r < cols; r++) {
+      let accRe = 0, accIm = 0;
+      for (let k = -kernel.half; k <= kernel.half; k++) {
+        const idx = a + k;
+        if (idx < 0 || idx >= rows) continue;
+        const xr = srcRe[idx][r];
+        const xi = srcIm[idx][r];
+        const hr = kernel.re[k + kernel.half];
+        const hi = -kernel.im[k + kernel.half];
+        accRe += xr * hr - xi * hi;
+        accIm += xr * hi + xi * hr;
+      }
+      outRe[a][r] = accRe / kernel.energy;
+      outIm[a][r] = accIm / kernel.energy;
+    }
+  }
+  return { re: outRe, im: outIm };
+}
+
+function extractPatchDb(re, im, centerA, centerR, halfWidth) {
+  const patch = [];
+  let peak = 1e-12;
+  for (let a = centerA - halfWidth; a <= centerA + halfWidth; a++) {
+    const row = [];
+    for (let r = centerR - halfWidth; r <= centerR + halfWidth; r++) {
+      const rr = (a >= 0 && a < re.length && r >= 0 && r < re[0].length) ? re[a][r] : 0;
+      const ii = (a >= 0 && a < re.length && r >= 0 && r < re[0].length) ? im[a][r] : 0;
+      const mag = Math.hypot(rr, ii);
+      peak = Math.max(peak, mag);
+      row.push(mag);
+    }
+    patch.push(row);
+  }
+  return patch.map(row => row.map(v => 20 * Math.log10(Math.max(v / peak, 1e-12))));
+}
+
+function simulateScene(targets, p) {
+  const rawRe = alloc2D(p.NA, p.NR);
+  const rawIm = alloc2D(p.NA, p.NR);
+  for (const tgt of targets) {
+    addTargetResponse(rawRe, rawIm, tgt.ia, tgt.ir, tgt.amp, p.azKernel, p.rgKernel);
+  }
+  const rc = p.doRC ? matchedFilterRows(rawRe, rawIm, p.rgKernel) : { re: rawRe.map(row => row.slice()), im: rawIm.map(row => row.slice()) };
+  const foc = (p.doRC && p.doAC) ? matchedFilterCols(rc.re, rc.im, p.azKernel) : { re: rc.re.map(row => row.slice()), im: rc.im.map(row => row.slice()) };
+  return { rawRe, rawIm, rcRe: rc.re, rcIm: rc.im, focRe: foc.re, focIm: foc.im };
 }
 
 function update() {
@@ -195,212 +293,104 @@ function update() {
   const fc = fcGHz * 1e9;
   const lambda = c / fc;
   const R0 = r0km * 1e3;
-  const T_pulse = 10e-6;  // pulse duration (10 us)
-
-  // Resolutions
   const deltaR = c / (2 * B);
-  const Lsa = lambda * R0 / antLen;  // synthetic aperture length
-  const deltaAz = antLen / 2;         // real aperture at SAR focus = D/2
-  const sarGain = Lsa / antLen;
+  const deltaAz = antLen / 2;
+  const os = 4;
+  const dr = deltaR / os;
+  const dAz = deltaAz / os;
+  const rangeSpan = Math.max(rspread * 2.4, 80 * deltaR);
+  const azSpan = Math.max(rspread * 2.4, 80 * deltaAz);
+  const NR = Math.min(256, nextPow2(Math.max(128, Math.ceil(rangeSpan / dr))));
+  const NA = Math.min(256, nextPow2(Math.max(128, Math.ceil(azSpan / dAz))));
+  const rangeAxis = linspace(-dr * (NR - 1) / 2, dr * (NR - 1) / 2, NR);
+  const azAxis = linspace(-dAz * (NA - 1) / 2, dAz * (NA - 1) / 2, NA);
 
-  document.getElementById('m-dr').textContent = deltaR.toFixed(2) + ' m';
-  document.getElementById('m-daz').textContent = deltaAz.toFixed(2) + ' m';
-  document.getElementById('m-lsa').textContent = Lsa.toFixed(0) + ' m';
-  document.getElementById('m-gain').textContent = sarGain.toFixed(0) + 'x';
+  const rgLen = Math.min(61, Math.max(25, 2 * Math.floor((16 + 900 / Math.max(B / 1e6, 10)) / 2) + 1));
+  const azLen = Math.min(89, Math.max(33, 2 * Math.floor((24 + 30 * lambda * R0 / Math.max(antLen * 1e4, 1)) / 2) + 1));
+  const rgCycles = Math.max(5, Math.min(16, 0.12 * rgLen));
+  const azCycles = Math.max(6, Math.min(22, 0.14 * azLen + 0.6 * (3 / Math.max(antLen, 0.5))));
+  const rgKernel = buildChirpKernel(rgLen, rgCycles, +1);
+  const azKernel = buildChirpKernel(azLen, azCycles, -1);
 
-  // Place point targets
   const targets = [];
   const nSide = Math.ceil(Math.sqrt(nTgt));
   let count = 0;
+  const usableRange = Math.min(rspread / 2, Math.max(40, rangeAxis[NR - rgKernel.half - 2]));
+  const usableAz = Math.min(rspread / 2, Math.max(40, azAxis[NA - azKernel.half - 2]));
   for (let ri = 0; ri < nSide && count < nTgt; ri++) {
     for (let ai = 0; ai < nSide && count < nTgt; ai++) {
-      const rOff = (ri - (nSide - 1) / 2) * rspread / nSide;
-      const aOff = (ai - (nSide - 1) / 2) * rspread / nSide;
-      targets.push({ r: R0 + rOff, az: aOff });
+      const rOff = nTgt === 1 ? 0 : (ri - (nSide - 1) / 2) * (2 * usableRange / Math.max(1, nSide - 1));
+      const aOff = nTgt === 1 ? 0 : (ai - (nSide - 1) / 2) * (2 * usableAz / Math.max(1, nSide - 1));
+      targets.push({
+        ir: nearestIndex(rangeAxis, rOff),
+        ia: nearestIndex(azAxis, aOff),
+        amp: 1.0
+      });
       count++;
     }
   }
 
-  // SAR geometry
-  const azExtent = 1.5 * Lsa;
-  const eta = linspace(-azExtent / (2 * vel), azExtent / (2 * vel), NA); // slow time
-  const azPos = eta.map(t => t * vel); // platform azimuth position
+  const params = { NR, NA, doRC, doAC, rgKernel, azKernel };
+  const scene = simulateScene(targets, params);
+  const isolated = simulateScene([{ ir: nearestIndex(rangeAxis, 0), ia: nearestIndex(azAxis, 0), amp: 1.0 }], params);
 
-  // Range axis: scene extent ± some margin
-  const rMin = R0 - rspread * 0.8;
-  const rMax = R0 + rspread * 0.8;
-  const rAxis = linspace(rMin, rMax, NR);
-  const rSpacingM = (rMax - rMin) / (NR - 1);
+  const rawDisplay = normalizeReal2D(scene.rawRe);
+  const rcDisplay = magDb2D(scene.rcRe, scene.rcIm);
+  const focDisplay = magDb2D(scene.focRe, scene.focIm);
 
-  // Build raw SAR signal: complex phase history [NA x NR]
-  const kr = B / T_pulse;  // chirp rate
-  const rawRe = [], rawIm = [];
-  for (let ia = 0; ia < NA; ia++) {
-    const re = new Array(NR).fill(0);
-    const im = new Array(NR).fill(0);
-    for (const tgt of targets) {
-      const dist = Math.sqrt(tgt.r ** 2 + (azPos[ia] - tgt.az) ** 2);
-      const tDelay = 2 * dist / c;  // round-trip delay
-      // Chirp return: s(t) = exp(j*pi*kr*(t - 2R/c)^2) * exp(-j*2*pi*fc*2R/c)
-      for (let ir = 0; ir < NR; ir++) {
-        const tFast = 2 * rAxis[ir] / c;    // fast-time sample
-        const dt = tFast - tDelay;           // time relative to echo center
-        if (Math.abs(dt) > T_pulse / 2) continue; // outside pulse width
-        const chirpPhase = Math.PI * kr * dt * dt;
-        const carrierPhase = -4 * Math.PI * fc * dist / c;
-        const phase = chirpPhase + carrierPhase;
-        re[ir] += Math.cos(phase);
-        im[ir] += Math.sin(phase);
-      }
-    }
-    rawRe.push(re);
-    rawIm.push(im);
-  }
+  const centerR = nearestIndex(rangeAxis, 0);
+  const centerA = nearestIndex(azAxis, 0);
+  const psfPatch = extractPatchDb(isolated.focRe, isolated.focIm, centerA, centerR, 20);
+  const psfRangeCut = psfPatch[20];
+  const psfAzCut = psfPatch.map(row => row[20]);
+  const measuredDr = doRC ? widthAtLevel(psfRangeCut, -3, dr) : deltaR;
+  const measuredDaz = (doRC && doAC) ? widthAtLevel(psfAzCut, -3, dAz) : deltaAz;
+  const eqAperture = azLen * dAz;
+  const compGain = Math.sqrt(rgKernel.energy * azKernel.energy);
 
-  // Compute raw image magnitude
-  const rawMag = rawRe.map((re, ia) => {
-    return re.map((v, ir) => {
-      const mag = Math.sqrt(v ** 2 + rawIm[ia][ir] ** 2);
-      return 20 * Math.log10(Math.max(mag, 1e-10));
-    });
-  });
+  document.getElementById('m-dr').textContent = measuredDr.toFixed(2) + ' m';
+  document.getElementById('m-daz').textContent = measuredDaz.toFixed(2) + ' m';
+  document.getElementById('m-lsa').textContent = eqAperture.toFixed(0) + ' m';
+  document.getElementById('m-gain').textContent = compGain.toFixed(1) + 'x';
 
-  // Range compression: matched filter in range frequency domain
-  const rcRe = rawRe.map(row => [...row]);
-  const rcIm = rawIm.map(row => [...row]);
-
-  if (doRC) {
-    // Generate reference chirp and compute its conjugate spectrum (once)
-    const refRe = new Array(NR).fill(0);
-    const refIm = new Array(NR).fill(0);
-    for (let ir = 0; ir < NR; ir++) {
-      const tFast = 2 * rAxis[ir] / c;
-      const tRef = tFast - 2 * R0 / c;  // centered at scene center
-      if (Math.abs(tRef) <= T_pulse / 2) {
-        const phase = Math.PI * kr * tRef * tRef;
-        refRe[ir] = Math.cos(phase);
-        refIm[ir] = Math.sin(phase);
-      }
-    }
-    // FFT of reference chirp
-    fft(refRe, refIm);
-    // Conjugate of reference spectrum (matched filter kernel)
-    for (let k = 0; k < NR; k++) refIm[k] = -refIm[k];
-
-    // Apply matched filter to each azimuth line
-    for (let ia = 0; ia < NA; ia++) {
-      const re = rcRe[ia], im = rcIm[ia];
-      fft(re, im);
-      // Multiply by conjugate of reference spectrum
-      for (let k = 0; k < NR; k++) {
-        const newRe = re[k] * refRe[k] - im[k] * refIm[k];
-        const newIm = re[k] * refIm[k] + im[k] * refRe[k];
-        re[k] = newRe;
-        im[k] = newIm;
-      }
-      ifft(re, im);
-    }
-  }
-
-  const rcMag = rcRe.map((re, ia) => {
-    return re.map((v, ir) => {
-      const mag = Math.sqrt(v ** 2 + rcIm[ia][ir] ** 2);
-      return 20 * Math.log10(Math.max(mag, 1e-10));
-    });
-  });
-
-  // Azimuth compression: matched filter in azimuth frequency domain
-  const focRe = rcRe.map(row => [...row]);
-  const focIm = rcIm.map(row => [...row]);
-
-  if (doRC && doAC) {
-    // For each range bin, apply azimuth matched filter
-    for (let ir = 0; ir < NR; ir++) {
-      const re = new Array(NA), im = new Array(NA);
-      for (let ia = 0; ia < NA; ia++) { re[ia] = focRe[ia][ir]; im[ia] = focIm[ia][ir]; }
-      fft(re, im);
-      // Azimuth matched filter: remove quadratic phase (range migration correction simplified)
-      // Azimuth FM rate: ka = 2*v^2 / (lambda * R0)
-      const ka = 2 * vel ** 2 / (lambda * R0);
-      const fa = linspace(-NA / (2 * azExtent / vel), NA / (2 * azExtent / vel), NA);
-      for (let ia = 0; ia < NA; ia++) {
-        // Phase of reference function (MF)
-        const faDop = (ia < NA / 2 ? ia : ia - NA) / (azExtent / vel);
-        const phase = Math.PI * faDop ** 2 / ka;
-        const mfRe = Math.cos(phase), mfIm = Math.sin(phase);
-        const newRe = re[ia] * mfRe - im[ia] * mfIm;
-        const newIm = re[ia] * mfIm + im[ia] * mfRe;
-        re[ia] = newRe; im[ia] = newIm;
-      }
-      ifft(re, im);
-      for (let ia = 0; ia < NA; ia++) { focRe[ia][ir] = re[ia]; focIm[ia][ir] = im[ia]; }
-    }
-  }
-
-  const focMag = focRe.map((re, ia) => {
-    return re.map((v, ir) => {
-      const mag = Math.sqrt(v ** 2 + focIm[ia][ir] ** 2);
-      return 20 * Math.log10(Math.max(mag, 1e-10));
-    });
-  });
-
-  // PSF: extract center target region
-  const cTgt = targets[Math.floor(targets.length / 2)];
-  const cRbin = Math.round((cTgt.r - rMin) / rSpacingM);
-  const cAbin = Math.floor(NA / 2);
-  const psfHW = 20;
-  const psfRe = [], psfIm = [];
-  for (let ia = cAbin - psfHW; ia <= cAbin + psfHW; ia++) {
-    const row = [];
-    for (let ir = cRbin - psfHW; ir <= cRbin + psfHW; ir++) {
-      const v_re = (ia >= 0 && ia < NA && ir >= 0 && ir < NR) ? focRe[ia][ir] : 0;
-      const v_im = (ia >= 0 && ia < NA && ir >= 0 && ir < NR) ? focIm[ia][ir] : 0;
-      row.push(20 * Math.log10(Math.sqrt(v_re ** 2 + v_im ** 2) + 1e-10));
-    }
-    psfRe.push(row);
-  }
-
-  const azLabels = linspace(-azExtent / 2, azExtent / 2, NA).map(v => v.toFixed(0));
-  const rLabels = rAxis.map(v => ((v - R0) / 1000).toFixed(2));
+  const rangeTicks = [0, Math.floor(NR/4), Math.floor(NR/2), Math.floor(3*NR/4), NR-1];
+  const azTicks = [0, Math.floor(NA/4), Math.floor(NA/2), Math.floor(3*NA/4), NA-1];
+  const rangeLabels = rangeTicks.map(i => rangeAxis[i].toFixed(0));
+  const azLabels = azTicks.map(i => azAxis[i].toFixed(0));
 
   const heatLayout = (title) => ({
     ...lo,
     title: { text: title, font: { size: 13 } },
-    xaxis: { ...lo.xaxis, title: 'Range offset (km)', tickvals: [0, NR/4, NR/2, 3*NR/4, NR-1], ticktext: [rLabels[0], rLabels[Math.floor(NR/4)], rLabels[Math.floor(NR/2)], rLabels[Math.floor(3*NR/4)], rLabels[NR-1]] },
-    yaxis: { ...lo.yaxis, title: 'Azimuth (m)', tickvals: [0, NA/4, NA/2, 3*NA/4, NA-1], ticktext: [azLabels[0], azLabels[Math.floor(NA/4)], azLabels[Math.floor(NA/2)], azLabels[Math.floor(3*NA/4)], azLabels[NA-1]] }
+    xaxis: { ...lo.xaxis, title: 'Range offset (m)', tickvals: rangeTicks, ticktext: rangeLabels },
+    yaxis: { ...lo.yaxis, title: 'Azimuth (m)', tickvals: azTicks, ticktext: azLabels }
   });
 
-  const colorscale = [[0,'#111827'],[0.3,'#1e3a5f'],[0.6,'#2563eb'],[0.85,'#60a5fa'],[1,'#ffffff']];
+  const rawColors = [[0,'#1d4ed8'],[0.5,'#f8fafc'],[1,'#dc2626']];
+  const magColors = [[0,'#020617'],[0.18,'#0f172a'],[0.45,'#1d4ed8'],[0.78,'#60a5fa'],[1,'#ffffff']];
 
   Plotly.react('plot-raw', [{
-    z: rawMag, type: 'heatmap', colorscale, showscale: false,
-    zmin: -40, zmax: 0, hovertemplate: 'Az %{y}<br>R %{x}<br>%{z:.1f} dB'
-  }], heatLayout('Raw SAR Data (Phase History)'), { responsive: true });
+    z: rawDisplay, type: 'heatmap', colorscale: rawColors, showscale: false,
+    zmin: -1, zmax: 1, hovertemplate: 'Az %{y}<br>R %{x}<br>real(raw)=%{z:.2f}<extra></extra>'
+  }], heatLayout('Raw baseband echo (real part)'), { responsive: true });
 
   Plotly.react('plot-rc', [{
-    z: rcMag, type: 'heatmap', colorscale, showscale: false,
-    zmin: -40, zmax: 0, hovertemplate: 'Az %{y}<br>R %{x}<br>%{z:.1f} dB'
-  }], heatLayout(doRC ? 'After Range Compression' : 'Raw (RC disabled)'), { responsive: true });
+    z: rcDisplay, type: 'heatmap', colorscale: magColors, showscale: false,
+    zmin: -35, zmax: 0, hovertemplate: 'Az %{y}<br>R %{x}<br>%{z:.1f} dB rel.<extra></extra>'
+  }], heatLayout(doRC ? 'After range compression' : 'Raw echo (RC disabled)'), { responsive: true });
 
   Plotly.react('plot-focused', [{
-    z: focMag, type: 'heatmap', colorscale, showscale: false,
-    zmin: -40, zmax: 0, hovertemplate: 'Az %{y}<br>R %{x}<br>%{z:.1f} dB'
-  }], { ...heatLayout((doRC && doAC) ? 'Focused SAR Image' : 'Partially processed'), annotations: [] }, { responsive: true });
+    z: focDisplay, type: 'heatmap', colorscale: magColors, showscale: false,
+    zmin: -35, zmax: 0, hovertemplate: 'Az %{y}<br>R %{x}<br>%{z:.1f} dB rel.<extra></extra>'
+  }], heatLayout((doRC && doAC) ? 'Focused SAR image' : 'Partially processed image'), { responsive: true });
 
-  const psfW = psfHW * 2 + 1;
   Plotly.react('plot-psf', [{
-    z: psfRe, type: 'heatmap', colorscale, showscale: false,
-    zmin: -30, zmax: 0
+    z: psfPatch, type: 'heatmap', colorscale: magColors, showscale: false,
+    zmin: -30, zmax: 0, hovertemplate: 'Δaz %{y}<br>Δr %{x}<br>%{z:.1f} dB rel.<extra></extra>'
   }], {
     ...lo,
-    title: { text: `PSF \u2014 \u0394r=${deltaR.toFixed(1)}m, \u0394az=${deltaAz.toFixed(1)}m`, font: { size: 13 } },
-    xaxis: { ...lo.xaxis, title: 'Range (samples)' },
-    yaxis: { ...lo.yaxis, title: 'Azimuth (samples)' },
-    shapes: [{
-      type: 'circle', xref: 'x', yref: 'y',
-      x0: psfHW - 3, y0: psfHW - 3, x1: psfHW + 3, y1: psfHW + 3,
-      line: { color: '#facc15', width: 1.5, dash: 'dot' }
-    }]
+    title: { text: `Isolated PSF — Δr=${measuredDr.toFixed(2)} m, Δaz=${measuredDaz.toFixed(2)} m`, font: { size: 13 } },
+    xaxis: { ...lo.xaxis, title: 'Range (oversampled cells)' },
+    yaxis: { ...lo.yaxis, title: 'Azimuth (oversampled cells)' }
   }, { responsive: true });
 }
 
