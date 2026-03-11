@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+<link rel="stylesheet" href="../../theme.css?v=2">
+<title>Option C — Sticky sidebar nav</title>
+<style>
+
+  :root {
+    --page-max: 1240px;
+    --blue-50: #eff6ff;
+    --blue-100: #dbeafe;
+    --blue-200: #bfdbfe;
+    --blue-600: #2563eb;
+    --blue-700: #1d4ed8;
+    --blue-800: #1e40af;
+    --blue-900: #1e3a8a;
+    --slate-50: #f8fafc;
+    --slate-100: #f1f5f9;
+    --slate-200: #e2e8f0;
+    --slate-300: #cbd5e1;
+    --slate-500: #64748b;
+    --slate-700: #334155;
+    --slate-900: #0f172a;
+    --shadow-soft: 0 18px 48px rgba(15, 23, 42, 0.08);
+    --shadow-card: 0 10px 28px rgba(15, 23, 42, 0.06);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Pretendard', 'Inter', system-ui, -apple-system, sans-serif;
+    background:
+      radial-gradient(circle at top, rgba(59, 130, 246, 0.10), transparent 32%),
+      linear-gradient(180deg, var(--bg-body, #f8fafc) 0%, #ffffff 100%);
+    color: var(--text-primary, #0f172a);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+  a { color: inherit; }
+  .page-shell {
+    max-width: var(--page-max);
+    margin: 0 auto;
+    padding: 1.5rem 1.25rem 3rem;
+  }
+  .hero {
+    position: relative;
+    overflow: hidden;
+    margin-top: 0.5rem;
+    padding: 1.8rem 2rem 2rem;
+    border-radius: 28px;
+    background:
+      radial-gradient(circle at top right, rgba(191, 219, 254, 0.28), transparent 28%),
+      linear-gradient(135deg, var(--blue-800) 0%, var(--blue-700) 55%, var(--blue-900) 100%);
+    color: #fff;
+    box-shadow: var(--shadow-soft);
+  }
+  .hero::after {
+    content: '';
+    position: absolute;
+    inset: auto -12% -42% auto;
+    width: 320px;
+    height: 320px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.14), transparent 68%);
+    pointer-events: none;
+  }
+  .hero-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: center;
+  }
+  .hero-copy { position: relative; z-index: 1; }
+  .hero h1 {
+    font-size: clamp(2rem, 4vw, 3.4rem);
+    line-height: 1.05;
+    letter-spacing: -0.04em;
+    font-weight: 700;
+    margin: 0;
+  }
+  .hero h1 span { color: #bfdbfe; }
+  .hero p {
+    margin-top: 0.7rem;
+    color: rgba(219, 234, 254, 0.92);
+    max-width: 780px;
+    font-size: 0.98rem;
+  }
+  .theme-toggle {
+    position: static;
+    flex-shrink: 0;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: rgba(255, 255, 255, 0.08);
+    color: #eff6ff;
+    backdrop-filter: blur(8px);
+  }
+  .theme-toggle:hover {
+    background: rgba(255, 255, 255, 0.16);
+    border-color: rgba(255, 255, 255, 0.32);
+    color: #ffffff;
+  }
+  .variant-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-top: 1rem;
+    position: relative;
+    z-index: 1;
+  }
+  .variant-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    padding: 0.6rem 0.9rem;
+    border-radius: 999px;
+    text-decoration: none;
+    font-size: 0.86rem;
+    font-weight: 700;
+    background: rgba(255,255,255,0.10);
+    border: 1px solid rgba(255,255,255,0.18);
+    color: #eff6ff;
+  }
+  .variant-link:hover { background: rgba(255,255,255,0.18); }
+  .variant-link.active {
+    background: #ffffff;
+    border-color: #ffffff;
+    color: var(--blue-700);
+  }
+  .main-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    padding: 0.62rem 0.95rem;
+    border-radius: 999px;
+    text-decoration: none;
+    font-size: 0.86rem;
+    font-weight: 700;
+    border: 1px solid rgba(255,255,255,0.24);
+    background: rgba(255,255,255,0.08);
+    color: #eff6ff;
+  }
+  .main-link:hover { background: rgba(255,255,255,0.16); }
+  .section-intro {
+    margin: 1.75rem 0 1rem;
+    padding: 0 0.1rem;
+    scroll-margin-top: 1rem;
+  }
+  .section-kicker {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.34rem 0.7rem;
+    border-radius: 999px;
+    background: var(--blue-50);
+    border: 1px solid var(--blue-100);
+    color: var(--blue-700);
+    font-size: 0.8rem;
+    font-weight: 700;
+    margin-bottom: 0.7rem;
+  }
+  .section-intro h2 {
+    font-size: clamp(1.5rem, 2.2vw, 2.1rem);
+    letter-spacing: -0.03em;
+    color: var(--slate-900);
+    margin-bottom: 0.35rem;
+  }
+  .section-intro p {
+    max-width: 780px;
+    color: var(--slate-500);
+    font-size: 0.95rem;
+  }
+  .course-card,
+  .course-panel,
+  .preview-card {
+    --course-accent: var(--blue-700);
+    --course-accent-soft: var(--blue-200);
+    --course-accent-deep: var(--blue-800);
+    --course-tint: rgba(37, 99, 235, 0.10);
+    --course-tint-border: rgba(37, 99, 235, 0.18);
+    --course-soft: rgba(37, 99, 235, 0.07);
+  }
+  .course-card.ss, .course-panel.ss, .preview-card.ss { --course-accent: #0891b2; --course-accent-soft: #67e8f9; --course-accent-deep: #0f766e; --course-tint: rgba(8,145,178,0.10); --course-tint-border: rgba(8,145,178,0.18); --course-soft: rgba(8,145,178,0.07); }
+  .course-card.wc, .course-panel.wc, .preview-card.wc { --course-accent: #2563eb; --course-accent-soft: #60a5fa; --course-accent-deep: #1d4ed8; --course-tint: rgba(37,99,235,0.10); --course-tint-border: rgba(37,99,235,0.18); --course-soft: rgba(37,99,235,0.07); }
+  .course-card.rsp, .course-panel.rsp, .preview-card.rsp { --course-accent: #7c3aed; --course-accent-soft: #a78bfa; --course-accent-deep: #6d28d9; --course-tint: rgba(124,58,237,0.10); --course-tint-border: rgba(124,58,237,0.18); --course-soft: rgba(124,58,237,0.07); }
+  .course-card.dsp, .course-panel.dsp, .preview-card.dsp { --course-accent: #16a34a; --course-accent-soft: #4ade80; --course-accent-deep: #15803d; --course-tint: rgba(22,163,74,0.10); --course-tint-border: rgba(22,163,74,0.18); --course-soft: rgba(22,163,74,0.07); }
+  .course-card,
+  .course-panel,
+  .preview-card {
+    background: #ffffff;
+    border: 1px solid var(--slate-200);
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: var(--shadow-card);
+  }
+  .course-bar,
+  .panel-bar,
+  .preview-bar {
+    height: 5px;
+    background: linear-gradient(90deg, var(--course-accent), var(--course-accent-soft));
+  }
+  .course-head,
+  .panel-head,
+  .preview-head {
+    display: flex;
+    gap: 0.95rem;
+    align-items: flex-start;
+    padding: 1.15rem 1.25rem 1rem;
+    border-bottom: 1px solid var(--slate-200);
+    background: linear-gradient(180deg, rgba(248, 250, 252, 0.88), rgba(255,255,255,0));
+  }
+  .course-icon,
+  .panel-icon,
+  .preview-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    background: var(--course-tint);
+    border: 1px solid var(--course-tint-border);
+    flex-shrink: 0;
+  }
+  .course-copy,
+  .panel-copy,
+  .preview-copy { flex: 1; min-width: 0; }
+  .course-copy h3,
+  .panel-copy h3,
+  .preview-copy h3 {
+    margin: 0;
+    font-size: 1.06rem;
+    line-height: 1.3;
+    color: var(--slate-900);
+  }
+  .course-meta,
+  .panel-meta,
+  .preview-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.65rem;
+    align-items: center;
+    margin-top: 0.38rem;
+  }
+  .count-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2rem;
+    height: 1.65rem;
+    padding: 0 0.55rem;
+    border-radius: 999px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    background: var(--course-tint);
+    color: var(--course-accent-deep);
+    border: 1px solid var(--course-tint-border);
+  }
+  .ref {
+    font-size: 0.76rem;
+    color: var(--slate-500);
+  }
+  .panel-note,
+  .preview-note {
+    margin-top: 0.55rem;
+    font-size: 0.84rem;
+    color: var(--slate-500);
+  }
+  .detail-grid {
+    padding: 0.85rem;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.55rem;
+  }
+  .detail-link {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    min-height: 48px;
+    padding: 0.72rem 0.9rem;
+    text-decoration: none;
+    color: var(--slate-900);
+    border-radius: 16px;
+    border: 1px solid var(--slate-200);
+    background: rgba(255,255,255,0.92);
+    transition: background 0.14s ease, transform 0.14s ease, border-color 0.14s ease;
+  }
+  .detail-link:hover {
+    border-color: var(--course-tint-border);
+    background: var(--course-soft);
+    transform: translateY(-1px);
+  }
+  .detail-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 999px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    font-family: 'Inter', sans-serif;
+    color: var(--course-accent);
+    background: var(--course-tint);
+    border: 1px solid var(--course-tint-border);
+    flex-shrink: 0;
+  }
+  .detail-title { flex: 1; min-width: 0; font-size: 0.92rem; }
+  .detail-arrow, .jump-arrow { color: var(--course-accent); font-size: 0.84rem; opacity: 0.78; }
+  .detail-link:hover .detail-arrow,
+  .jump-link:hover .jump-arrow,
+  .course-chip:hover .jump-arrow,
+  .sidebar-link:hover .jump-arrow { opacity: 1; transform: translateX(2px); }
+  .jump-link,
+  .course-chip,
+  .sidebar-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-height: 40px;
+    padding: 0.62rem 0.95rem;
+    border-radius: 999px;
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 700;
+    border: 1px solid var(--course-tint-border);
+    background: var(--course-tint);
+    color: var(--course-accent-deep);
+    transition: background 0.14s ease, transform 0.14s ease, border-color 0.14s ease;
+  }
+  .jump-link:hover,
+  .course-chip:hover,
+  .sidebar-link:hover {
+    background: var(--course-soft);
+    transform: translateY(-1px);
+  }
+  .footer {
+    max-width: var(--page-max);
+    margin: 2rem auto 0;
+    padding: 1.4rem 1.25rem 0;
+    border-top: 1px solid var(--slate-200);
+    color: var(--slate-500);
+    text-align: center;
+    font-size: 0.84rem;
+  }
+  .footer a { color: var(--blue-700); text-decoration: none; font-weight: 600; }
+  .footer a:hover { text-decoration: underline; }
+  @media (max-width: 960px) {
+    .detail-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 768px) {
+    .page-shell { padding: 1rem 0.9rem 2.5rem; }
+    .hero { padding: 1.35rem 1.15rem 1.5rem; border-radius: 22px; }
+    .hero-top { align-items: center; }
+    .main-link { display: none; }
+    .detail-grid { padding: 0.6rem; }
+    .variant-nav { gap: 0.5rem; }
+  }
+
+
+  .sidebar-layout {
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+    gap: 1.25rem;
+    align-items: start;
+  }
+  .sidebar {
+    position: sticky;
+    top: 1rem;
+    display: grid;
+    gap: 0.85rem;
+    padding: 1rem;
+    border-radius: 24px;
+    background: rgba(255,255,255,0.84);
+    border: 1px solid var(--slate-200);
+    box-shadow: var(--shadow-card);
+    backdrop-filter: blur(12px);
+  }
+  .sidebar-title {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--slate-700);
+  }
+  .sidebar-links {
+    display: grid;
+    gap: 0.55rem;
+  }
+  .sidebar-link {
+    justify-content: space-between;
+    border-radius: 18px;
+    background: #fff;
+    border-color: var(--slate-200);
+  }
+  .sidebar-link strong { font-size: 0.9rem; }
+  .sidebar-link span { color: var(--slate-500); font-size: 0.78rem; }
+  .sidebar-link .meta { display: grid; gap: 0.05rem; }
+  .content-panels { display: grid; gap: 1.2rem; }
+  .course-panel { scroll-margin-top: 1rem; }
+  @media (max-width: 960px) {
+    .sidebar-layout { grid-template-columns: 1fr; }
+    .sidebar { position: static; }
+  }
+
+</style>
+<script>
+  if (!localStorage.getItem('demo-theme')) localStorage.setItem('demo-theme', 'light');
+</script>
+<script src="../../theme.js?v=2"></script>
+</head>
+<body>
+<div class="page-shell">
+  <section class="hero">
+    <div class="hero-top">
+      <div class="hero-copy">
+        <h1>Catalog <span>Preview Variants</span></h1>
+        <p>Variant C uses a sticky side navigator on desktop to strengthen structure without duplicating demo previews.</p>
+      </div>
+      <a class="main-link" href="../../index.html">Back to current live</a>
+      <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"></button>
+    </div>
+    <div class="variant-nav"><a class="variant-link" href="index.html">Overview</a>
+<a class="variant-link" href="option-a-section-only.html">Option A</a>
+<a class="variant-link" href="option-b-chip-nav.html">Option B</a>
+<a class="variant-link active" href="option-c-sidebar-nav.html">Option C</a></div>
+  </section>
+  
+  <section class="section-intro">
+    <span class="section-kicker">Option C</span>
+    <h2>Sticky sidebar navigation</h2>
+    <p>Desktop users get a persistent side navigator while the full course sections remain the main content column.</p>
+  </section>
+  <section class="sidebar-layout">
+    <aside class="sidebar">
+      <div class="sidebar-title">Course navigation</div>
+      <div class="sidebar-links"><a class="sidebar-link ss" href="#course-ss"><span class="meta"><strong>Signals and Systems</strong><span>8 demos · Oppenheim & Willsky</span></span><span class="jump-arrow">→</span></a><a class="sidebar-link wc" href="#course-wc"><span class="meta"><strong>Wireless Communication</strong><span>11 demos · Proakis & Salehi</span></span><span class="jump-arrow">→</span></a><a class="sidebar-link rsp" href="#course-rsp"><span class="meta"><strong>Radar Signal Processing</strong><span>12 demos · Skolnik · Richards</span></span><span class="jump-arrow">→</span></a><a class="sidebar-link dsp" href="#course-dsp"><span class="meta"><strong>DSP & Signal Analysis</strong><span>3 demos · Haykin · Stoica · Huang</span></span><span class="jump-arrow">→</span></a></div>
+    </aside>
+    <div class="content-panels">
+    <article class="course-panel ss" id="course-ss">
+      <div class="panel-bar"></div>
+      <div class="panel-head">
+        <span class="panel-icon">∿</span>
+        <div class="panel-copy">
+          <h3>Signals and Systems</h3>
+          <div class="panel-meta">
+            <span class="count-pill">8 demos</span>
+            <span class="ref">Oppenheim & Willsky</span>
+          </div>
+          <p class="panel-note">All demos for this course are listed here.</p>
+        </div>
+      </div>
+      <div class="detail-grid"><a class="detail-link" href="../../signals-and-systems/01-sinusoidal.html"><span class="detail-num">01</span><span class="detail-title">Sinusoidal Signals & Phasors</span><span class="detail-arrow">&rarr;</span></a>
+<a class="detail-link" href="../../signals-and-systems/02-convolution.html"><span class="detail-num">02</span><span class="detail-title">Convolution</span><span class="detail-arrow">&rarr;</span></a>
+<a class="detail-link" href="../../signals-and-systems/03-fourier-series.html"><span class="detail-num">03</span><span class="detail-title">Fourier Series</span><span class="detail-arrow">&rarr;</span></a>
+<a class="detail-link" href="../../signals-and-systems/04-fourier-transform-filtering.html"><span class="detail-num">04</span><span class="detail-title">Fourier Transform & Filtering</span><span class="detail-arrow">&rarr;</span></a>
+<a class="detail-link" href="../../signals-and-systems/05-sampling.html"><span class="detail-num">05</span><span class="detail-title">Sampling & Reconstruction</span><span class="detail-arrow">&rarr;</span></a>
+<a class="detail-link" href="../../signals-and-systems/06-dft.html"><span class="detail-num">06</span><span class="detail-title">DFT & Spectral Analysis</span><span class="detail-arrow">&rarr;</span></a>
+<a class="detail-link" href="../../signals-and-systems/07-z-transform.html"><span class="detail-num">07</span><span class="detail-title">Z-Transform & Digital Filters</span><span class="detail-arrow">&rarr;</span></a>
+<a class="detail-link" href="../../signals-and-systems/08-laplace-transform.html"><span class="detail-num">08</span><span class="detail-title">Laplace Transform & Stability</span><span class="detail-arrow">&rarr;</span></a></div>
+    </article>
+    <article class="course-panel wc" id="course-wc">
+      <div class="panel-bar"></div>
+      <div class="panel-head">
+        <span class="panel-icon">⌁</span>
+        <div class="panel-copy">
+          <h3>Wireless Communication</h3>
+          <div class="panel-meta">
+            <span class="count-pill">11 demos</span>
+            <span class="ref">Proakis & Salehi</span>
+          </div>
+          <p class="panel-note">All demos for this course are listed here.</p>
+        </div>
+      </div>
+      <div class="detail-grid"><a class="detail-link" href="../../wireless-comm/01-analog-modulation.html"><span class="detail-num">01</span><span class="detail-title">Analog Modulation</span><span class="detail-arrow">&rarr;</span></a>
+<a class="detail-link" href="../../wireless-comm/02-digital-modulation.html"><span class="detail-num">02</span><span class="detail-title">Digital Modulation & Constellation</span><span class="detail-arrow">&rarr;</span></a>
+<a class="detail-link" href="../../wireless-comm/03-ber-curves.html"><span class="detail-num">03</span><span class="detail-title">BER Curves & Comparison</span><span class="detail-arrow">&rarr;</span></a>
+<a class="detail-link" href="../../wireless-comm/04-pulse-shaping.html"><span class="detail-num">04</span><span class="detail-title">Pulse Shaping & Eye Diagram</span><span class="detail-arrow">&rarr;</span></a>
+<a class="detail-link" href="../../wireless-comm/05-ofdm.html"><span class="detail-num">05</span><span class="detail-title">OFDM</span><span class="detail-arrow">&rarr;</span></a>
+<a class="detail-link" href="../../wireless-comm/06-channel-fading.html"><span class="detail-num">06</span><span class="detail-title">Channel Fading</span><span class="detail-arrow">&rarr;</span></a>
+<a class="detail-link" href="../../wireless-comm/07-link-budget.html"><span class="detail-num">07</span><span class="detail-title">Link Budget</span><span class="detail-arrow">&rarr;</span></a>
+<a class="detail-link" href="../../wireless-comm/08-shannon-capacity.html"><span class="detail-num">08</span><span class="detail-title">Shannon Capacity</span><span class="detail-arrow">&rarr;</span></a>
+<a class="detail-link" href="../../wireless-comm/09-multiplexing.html"><span class="detail-num">09</span><span class="detail-title">Multiplexing Techniques</span><span class="detail-arrow">&rarr;</span></a>
+<a class="detail-link" href="../../wireless-comm/10-spread-spectrum.html"><span class="detail-num">10</span><span class="detail-title">Spread Spectrum & CDMA</span><span class="detail-arrow">&rarr;</span></a>
+<a class="detail-link" href="../../wireless-comm/11-equalization.html"><span class="detail-num">11</span><span class="detail-title">Channel Equalization</span><span class="detail-arrow">&rarr;</span></a></div>
+    </article>
+    <article class="course-panel rsp" id="course-rsp">
+      <div class="panel-bar"></div>
+      <div class="panel-head">
+        <span class="panel-icon">📡</span>
+        <div class="panel-copy">
+          <h3>Radar Signal Processing</h3>
+          <div class="panel-meta">
+            <span class="count-pill">12 demos</span>
+            <span class="ref">Skolnik · Richards</span>
+          </div>
+          <p class="panel-note">All demos for this course are listed here.</p>
+        </div>
+      </div>
+      <div class="detail-grid"><a class="detail-link" href="../../radar/01-radar-equation.html"><span class="detail-num">01</span><span class="detail-title">Radar Equation</span><span class="detail-arrow">&rarr;</span></a>
+<a class="detail-link" href="../../radar/02-matched-filter.html"><span class="detail-num">02</span><span class="detail-title">Matched Filter</span><span class="detail-arrow">&rarr;</span></a>
+<a class="detail-link" href="../../radar/03-fmcw-radar.html"><span class="detail-num">03</span><span class="detail-title">FMCW Radar</span><span class="detail-arrow">&rarr;</span></a>
+<a class="detail-link" href="../../radar/04-doppler-effect.html"><span class="detail-num">04</span><span class="detail-title">Doppler Effect</span><span class="detail-arrow">&rarr;</span></a>
+<a class="detail-link" href="../../radar/05-ambiguity-function.html"><span class="detail-num">05</span><span class="detail-title">Ambiguity Function</span><span class="detail-arrow">&rarr;</span></a>
+<a class="detail-link" href="../../radar/06-cfar.html"><span class="detail-num">06</span><span class="detail-title">CFAR Detection</span><span class="detail-arrow">&rarr;</span></a>
+<a class="detail-link" href="../../radar/07-mti-pulse-doppler.html"><span class="detail-num">07</span><span class="detail-title">MTI & Pulse-Doppler</span><span class="detail-arrow">&rarr;</span></a>
+<a class="detail-link" href="../../radar/08-beamforming.html"><span class="detail-num">08</span><span class="detail-title">Array Beamforming</span><span class="detail-arrow">&rarr;</span></a>
+<a class="detail-link" href="../../radar/09-sar-imaging.html"><span class="detail-num">09</span><span class="detail-title">SAR Imaging</span><span class="detail-arrow">&rarr;</span></a>
+<a class="detail-link" href="../../radar/10-rcs-swerling.html"><span class="detail-num">10</span><span class="detail-title">RCS & Swerling Models</span><span class="detail-arrow">&rarr;</span></a>
+<a class="detail-link" href="../../radar/11-target-tracking.html"><span class="detail-num">11</span><span class="detail-title">Target Tracking — KF & EKF</span><span class="detail-arrow">&rarr;</span></a>
+<a class="detail-link" href="../../radar/12-radar-cube.html"><span class="detail-num">12</span><span class="detail-title">Radar Data Cube</span><span class="detail-arrow">&rarr;</span></a></div>
+    </article>
+    <article class="course-panel dsp" id="course-dsp">
+      <div class="panel-bar"></div>
+      <div class="panel-head">
+        <span class="panel-icon">∑</span>
+        <div class="panel-copy">
+          <h3>DSP & Signal Analysis</h3>
+          <div class="panel-meta">
+            <span class="count-pill">3 demos</span>
+            <span class="ref">Haykin · Stoica · Huang</span>
+          </div>
+          <p class="panel-note">All demos for this course are listed here.</p>
+        </div>
+      </div>
+      <div class="detail-grid"><a class="detail-link" href="../../dsp-signal-analysis/01-adaptive-filtering.html"><span class="detail-num">01</span><span class="detail-title">Adaptive Filtering</span><span class="detail-arrow">&rarr;</span></a>
+<a class="detail-link" href="../../dsp-signal-analysis/02-spectral-estimation.html"><span class="detail-num">02</span><span class="detail-title">Spectral Estimation & Chirp-Z</span><span class="detail-arrow">&rarr;</span></a>
+<a class="detail-link" href="../../dsp-signal-analysis/03-emd-vmd.html"><span class="detail-num">03</span><span class="detail-title">EMD & VMD Decomposition</span><span class="detail-arrow">&rarr;</span></a></div>
+    </article></div>
+  </section>
+</div>
+<div class="footer">Preview pages for decision-making · <a href="../../index.html">current catalog</a></div>
+</body>
+</html>
