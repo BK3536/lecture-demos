@@ -551,7 +551,6 @@ def render_panel(course: dict) -> str:
             <span class="count-pill">{course['count']}</span>
             <span class="ref">{course['ref']}</span>
           </div>
-          <p class="panel-note">All demos for this course are listed here.</p>
         </div>
       </div>
       <div class="detail-grid">{links}</div>

@@ -141,7 +141,8 @@
   }
 
   .course,
-  .course-detail-panel {
+  .course-detail-panel,
+  .sidebar-link {
     --course-accent: var(--blue-700);
     --course-accent-soft: var(--blue-200);
     --course-accent-deep: var(--blue-800);
@@ -343,10 +344,81 @@
     transform: translateY(-1px);
   }
 
+  .sidebar-layout {
+    margin-top: 1.4rem;
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+    gap: 1.25rem;
+    align-items: start;
+  }
+
+  .sidebar {
+    position: sticky;
+    top: 1rem;
+    display: grid;
+    gap: 0.85rem;
+    padding: 1rem;
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.84);
+    border: 1px solid var(--border, #e2e8f0);
+    box-shadow: var(--shadow-card);
+    backdrop-filter: blur(12px);
+  }
+
+  .sidebar-title {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--text-primary, #0f172a);
+  }
+
+  .sidebar-links {
+    display: grid;
+    gap: 0.55rem;
+  }
+
+  .sidebar-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    min-height: 40px;
+    padding: 0.75rem 0.9rem;
+    border-radius: 18px;
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 700;
+    border: 1px solid var(--border, #e2e8f0);
+    background: #ffffff;
+    color: var(--text-primary, #0f172a);
+    transition: background 0.14s ease, transform 0.14s ease, border-color 0.14s ease;
+  }
+
+  .sidebar-link .meta {
+    display: grid;
+    gap: 0.05rem;
+  }
+
+  .sidebar-link strong {
+    font-size: 0.9rem;
+  }
+
+  .sidebar-link .meta span {
+    color: var(--text-secondary, #64748b);
+    font-size: 0.78rem;
+    font-weight: 500;
+  }
+
+  .sidebar-link:hover {
+    background: var(--course-soft);
+    border-color: var(--course-tint-border);
+    transform: translateY(-1px);
+  }
+
   .course-detail-shell {
-    margin-top: 1.5rem;
+    margin-top: 0;
     display: grid;
     gap: 1.15rem;
+    min-width: 0;
   }
 
   .course-detail-panel {
@@ -364,10 +436,8 @@
   }
 
   .course-detail-head {
-    justify-content: space-between;
+    justify-content: flex-start;
   }
-
-  .course-detail-note { margin-top: 0.55rem; font-size: 0.84rem; }
 
   .course-detail-tools {
     display: flex;
@@ -394,13 +464,17 @@
   }
 
   .course.ss,
-  .course-detail-panel.ss { --course-accent: #0891b2; --course-accent-soft: #67e8f9; --course-accent-deep: #0f766e; --course-tint: rgba(8, 145, 178, 0.10); --course-tint-border: rgba(8, 145, 178, 0.18); --course-soft: rgba(8, 145, 178, 0.07); }
+  .course-detail-panel.ss,
+  .sidebar-link.ss { --course-accent: #0891b2; --course-accent-soft: #67e8f9; --course-accent-deep: #0f766e; --course-tint: rgba(8, 145, 178, 0.10); --course-tint-border: rgba(8, 145, 178, 0.18); --course-soft: rgba(8, 145, 178, 0.07); }
   .course.wc,
-  .course-detail-panel.wc { --course-accent: #2563eb; --course-accent-soft: #60a5fa; --course-accent-deep: #1d4ed8; --course-tint: rgba(37, 99, 235, 0.10); --course-tint-border: rgba(37, 99, 235, 0.18); --course-soft: rgba(37, 99, 235, 0.07); }
+  .course-detail-panel.wc,
+  .sidebar-link.wc { --course-accent: #2563eb; --course-accent-soft: #60a5fa; --course-accent-deep: #1d4ed8; --course-tint: rgba(37, 99, 235, 0.10); --course-tint-border: rgba(37, 99, 235, 0.18); --course-soft: rgba(37, 99, 235, 0.07); }
   .course.rsp,
-  .course-detail-panel.rsp { --course-accent: #7c3aed; --course-accent-soft: #a78bfa; --course-accent-deep: #6d28d9; --course-tint: rgba(124, 58, 237, 0.10); --course-tint-border: rgba(124, 58, 237, 0.18); --course-soft: rgba(124, 58, 237, 0.07); }
+  .course-detail-panel.rsp,
+  .sidebar-link.rsp { --course-accent: #7c3aed; --course-accent-soft: #a78bfa; --course-accent-deep: #6d28d9; --course-tint: rgba(124, 58, 237, 0.10); --course-tint-border: rgba(124, 58, 237, 0.18); --course-soft: rgba(124, 58, 237, 0.07); }
   .course.dsp,
-  .course-detail-panel.dsp { --course-accent: #16a34a; --course-accent-soft: #4ade80; --course-accent-deep: #15803d; --course-tint: rgba(22, 163, 74, 0.10); --course-tint-border: rgba(22, 163, 74, 0.18); --course-soft: rgba(22, 163, 74, 0.07); }
+  .course-detail-panel.dsp,
+  .sidebar-link.dsp { --course-accent: #16a34a; --course-accent-soft: #4ade80; --course-accent-deep: #15803d; --course-tint: rgba(22, 163, 74, 0.10); --course-tint-border: rgba(22, 163, 74, 0.18); --course-soft: rgba(22, 163, 74, 0.07); }
 
   .footer {
     max-width: var(--page-max);
@@ -421,6 +495,8 @@
   .footer a:hover { text-decoration: underline; }
 
   @media (max-width: 960px) {
+    .sidebar-layout { grid-template-columns: 1fr; }
+    .sidebar { position: static; }
     .courses,
     .course-detail-grid { grid-template-columns: 1fr; }
   }
@@ -461,89 +537,18 @@
     <h2>Browse demos by lecture track</h2>
   </div>
 
-  <div class="courses">
-    <article class="course ss">
-      <div class="course-bar"></div>
-      <div class="course-header">
-        <span class="icon">∿</span>
-        <div class="course-copy">
-          <h3>Signals and Systems</h3>
-          <div class="course-meta">
-            <span class="count">8 demos</span>
-            <span class="ref">Oppenheim &amp; Willsky</span>
-          </div>
-        </div>
+  <section class="sidebar-layout" aria-label="Course catalog layout">
+    <aside class="sidebar">
+      <div class="sidebar-title">Courses</div>
+      <div class="sidebar-links">
+        <a class="sidebar-link ss" href="#course-ss"><span class="meta"><strong>Signals and Systems</strong><span>8 demos · Oppenheim &amp; Willsky</span></span><span class="jump-arrow">→</span></a>
+        <a class="sidebar-link wc" href="#course-wc"><span class="meta"><strong>Wireless Communication</strong><span>11 demos · Proakis &amp; Salehi</span></span><span class="jump-arrow">→</span></a>
+        <a class="sidebar-link rsp" href="#course-rsp"><span class="meta"><strong>Radar Signal Processing</strong><span>12 demos · Skolnik &middot; Richards</span></span><span class="jump-arrow">→</span></a>
+        <a class="sidebar-link dsp" href="#course-dsp"><span class="meta"><strong>DSP &amp; Signal Analysis</strong><span>3 demos · Haykin &middot; Stoica &middot; Huang</span></span><span class="jump-arrow">→</span></a>
       </div>
-      <div class="course-summary">
-        <span class="summary-note">Navigator card — jump to the full demo list below.</span>
-      </div>
-      <div class="course-actions">
-        <a class="summary-jump" href="#course-ss">Go to demos <span class="jump-arrow">↓</span></a>
-      </div>
-    </article>
+    </aside>
 
-    <article class="course wc">
-      <div class="course-bar"></div>
-      <div class="course-header">
-        <span class="icon">⌁</span>
-        <div class="course-copy">
-          <h3>Wireless Communication</h3>
-          <div class="course-meta">
-            <span class="count">11 demos</span>
-            <span class="ref">Proakis &amp; Salehi</span>
-          </div>
-        </div>
-      </div>
-      <div class="course-summary">
-        <span class="summary-note">Navigator card — jump to the full demo list below.</span>
-      </div>
-      <div class="course-actions">
-        <a class="summary-jump" href="#course-wc">Go to demos <span class="jump-arrow">↓</span></a>
-      </div>
-    </article>
-
-    <article class="course rsp">
-      <div class="course-bar"></div>
-      <div class="course-header">
-        <span class="icon">📡</span>
-        <div class="course-copy">
-          <h3>Radar Signal Processing</h3>
-          <div class="course-meta">
-            <span class="count">12 demos</span>
-            <span class="ref">Skolnik &middot; Richards</span>
-          </div>
-        </div>
-      </div>
-      <div class="course-summary">
-        <span class="summary-note">Navigator card — jump to the full demo list below.</span>
-      </div>
-      <div class="course-actions">
-        <a class="summary-jump" href="#course-rsp">Go to demos <span class="jump-arrow">↓</span></a>
-      </div>
-    </article>
-
-    <article class="course dsp">
-      <div class="course-bar"></div>
-      <div class="course-header">
-        <span class="icon">∑</span>
-        <div class="course-copy">
-          <h3>DSP &amp; Signal Analysis</h3>
-          <div class="course-meta">
-            <span class="count">3 demos</span>
-            <span class="ref">Haykin &middot; Stoica &middot; Huang</span>
-          </div>
-        </div>
-      </div>
-      <div class="course-summary">
-        <span class="summary-note">Navigator card — jump to the full demo list below.</span>
-      </div>
-      <div class="course-actions">
-        <a class="summary-jump" href="#course-dsp">Go to demos <span class="jump-arrow">↓</span></a>
-      </div>
-    </article>
-  </div>
-
-  <section class="course-detail-shell" aria-label="Full course demo lists">
+    <section class="course-detail-shell" aria-label="Full course demo lists">
     <article class="course-detail-panel ss" id="course-ss">
       <div class="course-detail-bar"></div>
       <div class="course-detail-head">
@@ -554,10 +559,6 @@
             <span class="count">8 demos</span>
             <span class="ref">Oppenheim &amp; Willsky</span>
           </div>
-          <p class="course-detail-note">Full demo list for the course.</p>
-        </div>
-        <div class="course-detail-tools">
-          <a class="back-link" href="#catalog">Back to catalog <span class="jump-arrow">↑</span></a>
         </div>
       </div>
       <div class="course-detail-grid">
@@ -582,10 +583,6 @@
             <span class="count">11 demos</span>
             <span class="ref">Proakis &amp; Salehi</span>
           </div>
-          <p class="course-detail-note">Full demo list for the course.</p>
-        </div>
-        <div class="course-detail-tools">
-          <a class="back-link" href="#catalog">Back to catalog <span class="jump-arrow">↑</span></a>
         </div>
       </div>
       <div class="course-detail-grid">
@@ -613,10 +610,6 @@
             <span class="count">12 demos</span>
             <span class="ref">Skolnik &middot; Richards</span>
           </div>
-          <p class="course-detail-note">Full demo list for the course.</p>
-        </div>
-        <div class="course-detail-tools">
-          <a class="back-link" href="#catalog">Back to catalog <span class="jump-arrow">↑</span></a>
         </div>
       </div>
       <div class="course-detail-grid">
@@ -645,10 +638,6 @@
             <span class="count">3 demos</span>
             <span class="ref">Haykin &middot; Stoica &middot; Huang</span>
           </div>
-          <p class="course-detail-note">Full demo list for the course.</p>
-        </div>
-        <div class="course-detail-tools">
-          <a class="back-link" href="#catalog">Back to catalog <span class="jump-arrow">↑</span></a>
         </div>
       </div>
       <div class="course-detail-grid">
@@ -657,6 +646,7 @@
         <a class="detail-link" href="dsp-signal-analysis/03-emd-vmd.html"><span class="detail-num">03</span><span class="detail-title">EMD &amp; VMD Decomposition</span><span class="detail-arrow">&rarr;</span></a>
       </div>
     </article>
+    </section>
   </section>
 </div>
 
