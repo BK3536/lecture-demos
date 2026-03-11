@@ -113,13 +113,13 @@ function linspace(a, b, n) {
   return out;
 }
 
-function baseLayout(title, subtitle, xTitle, yTitle) {
+function baseLayout(title, xTitle, yTitle) {
   return {
     paper_bgcolor: paperBg,
     plot_bgcolor: plotBg,
     font: { color: textColor, size: 11 },
-    margin: { t: 54, r: 16, b: 48, l: 56 },
-    title: { text: title + '<br><span style="font-size:11px;color:' + textColor + ';opacity:0.82">' + subtitle + '</span>', x: 0.03, y: 0.98, xanchor: 'left' },
+    margin: { t: 48, r: 16, b: 48, l: 56 },
+    title: { text: title, font: { size: 13 }, x: 0.03, y: 0.98, xanchor: 'left' },
     xaxis: { title: xTitle, gridcolor: gridColor, zerolinecolor: _t.zeroLine },
     yaxis: { title: yTitle, gridcolor: gridColor, zerolinecolor: _t.zeroLine },
   };
@@ -158,7 +158,7 @@ function renderAll() {
 
     for (const panel of DATA.panels) {
       const trace = buildTrace(panel, windowDb, colorscale);
-      const layout = baseLayout(panel.title, panel.subtitle, panel.x_label, panel.y_label);
+      const layout = baseLayout(panel.title, panel.x_label, panel.y_label);
       Plotly.react('plot-' + (panel.key === 'range_compressed' ? 'rc' : panel.key === 'final_product' ? 'geocoded' : panel.key), [trace], layout, {displayModeBar: true, responsive: true});
     }
 
