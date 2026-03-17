@@ -1,11 +1,12 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
-<link rel="stylesheet" href="theme.css?v=4">
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="theme.css?v=4" rel="stylesheet"/>
 <title>Interactive Lecture Demos — REMI Lab</title>
 <style>
   :root {
@@ -589,137 +590,111 @@
 <script src="theme.js?v=4"></script>
 </head>
 <body>
-
 <div class="page-shell">
-  <section class="hero">
-    <div class="hero-top">
-      <h1>Interactive <span>Lecture Demos</span></h1>
-      <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"></button>
-    </div>
-  </section>
-
-  <div class="section-intro" id="catalog">
-    <span class="section-kicker">Course Catalog</span>
-    <h2>Browse demos by lecture track</h2>
-  </div>
-
-  <section class="sidebar-layout" aria-label="Course catalog layout">
-    <aside class="sidebar">
-      <div class="sidebar-title">Courses</div>
-      <div class="sidebar-links">
-        <a class="sidebar-link ss" href="#course-ss"><span class="meta"><strong>Signals and Systems</strong><span>8 demos · Oppenheim &amp; Willsky</span></span><span class="jump-arrow">→</span></a>
-        <a class="sidebar-link wc" href="#course-wc"><span class="meta"><strong>Wireless Communication</strong><span>11 demos · Proakis &amp; Salehi</span></span><span class="jump-arrow">→</span></a>
-        <a class="sidebar-link rsp" href="#course-rsp"><span class="meta"><strong>Radar Signal Processing</strong><span>13 demos · Skolnik &middot; Richards</span></span><span class="jump-arrow">→</span></a>
-        <a class="sidebar-link dsp" href="#course-dsp"><span class="meta"><strong>DSP &amp; Signal Analysis</strong><span>3 demos · Haykin &middot; Stoica &middot; Huang</span></span><span class="jump-arrow">→</span></a>
-      </div>
-    </aside>
-
-    <section class="course-detail-shell" aria-label="Full course demo lists">
-    <article class="course-detail-panel ss" id="course-ss">
-      <div class="course-detail-bar"></div>
-      <div class="course-detail-head">
-        <span class="icon">∿</span>
-        <div class="course-detail-copy">
-          <h3>Signals and Systems</h3>
-          <div class="course-detail-meta">
-            <span class="count">8 demos</span>
-            <span class="ref">Oppenheim &amp; Willsky</span>
-          </div>
-        </div>
-      </div>
-      <div class="course-detail-grid">
-        <a class="detail-link" href="signals-and-systems/01-sinusoidal.html"><span class="detail-num">01</span><span class="detail-title">Sinusoidal Signals &amp; Phasors</span><span class="detail-arrow">&rarr;</span></a>
-        <a class="detail-link" href="signals-and-systems/02-convolution.html"><span class="detail-num">02</span><span class="detail-title">Convolution</span><span class="detail-arrow">&rarr;</span></a>
-        <a class="detail-link" href="signals-and-systems/03-fourier-series.html"><span class="detail-num">03</span><span class="detail-title">Fourier Series</span><span class="detail-arrow">&rarr;</span></a>
-        <a class="detail-link" href="signals-and-systems/04-fourier-transform-filtering.html"><span class="detail-num">04</span><span class="detail-title">Fourier Transform &amp; Filtering</span><span class="detail-arrow">&rarr;</span></a>
-        <a class="detail-link" href="signals-and-systems/05-sampling.html"><span class="detail-num">05</span><span class="detail-title">Sampling &amp; Reconstruction</span><span class="detail-arrow">&rarr;</span></a>
-        <a class="detail-link" href="signals-and-systems/06-dft.html"><span class="detail-num">06</span><span class="detail-title">DFT &amp; Spectral Analysis</span><span class="detail-arrow">&rarr;</span></a>
-        <a class="detail-link" href="signals-and-systems/07-z-transform.html"><span class="detail-num">07</span><span class="detail-title">Z-Transform &amp; Digital Filters</span><span class="detail-arrow">&rarr;</span></a>
-        <a class="detail-link" href="signals-and-systems/08-laplace-transform.html"><span class="detail-num">08</span><span class="detail-title">Laplace Transform &amp; Stability</span><span class="detail-arrow">&rarr;</span></a>
-      </div>
-    </article>
-
-    <article class="course-detail-panel wc" id="course-wc">
-      <div class="course-detail-bar"></div>
-      <div class="course-detail-head">
-        <span class="icon">⌁</span>
-        <div class="course-detail-copy">
-          <h3>Wireless Communication</h3>
-          <div class="course-detail-meta">
-            <span class="count">11 demos</span>
-            <span class="ref">Proakis &amp; Salehi</span>
-          </div>
-        </div>
-      </div>
-      <div class="course-detail-grid">
-        <a class="detail-link" href="wireless-comm/01-analog-modulation.html"><span class="detail-num">01</span><span class="detail-title">Analog Modulation</span><span class="detail-arrow">&rarr;</span></a>
-        <a class="detail-link" href="wireless-comm/02-digital-modulation.html"><span class="detail-num">02</span><span class="detail-title">Digital Modulation &amp; Constellation</span><span class="detail-arrow">&rarr;</span></a>
-        <a class="detail-link" href="wireless-comm/03-ber-curves.html"><span class="detail-num">03</span><span class="detail-title">BER Curves &amp; Comparison</span><span class="detail-arrow">&rarr;</span></a>
-        <a class="detail-link" href="wireless-comm/04-pulse-shaping.html"><span class="detail-num">04</span><span class="detail-title">Pulse Shaping &amp; Eye Diagram</span><span class="detail-arrow">&rarr;</span></a>
-        <a class="detail-link" href="wireless-comm/05-ofdm.html"><span class="detail-num">05</span><span class="detail-title">OFDM</span><span class="detail-arrow">&rarr;</span></a>
-        <a class="detail-link" href="wireless-comm/06-channel-fading.html"><span class="detail-num">06</span><span class="detail-title">Channel Fading</span><span class="detail-arrow">&rarr;</span></a>
-        <a class="detail-link" href="wireless-comm/07-link-budget.html"><span class="detail-num">07</span><span class="detail-title">Link Budget</span><span class="detail-arrow">&rarr;</span></a>
-        <a class="detail-link" href="wireless-comm/08-shannon-capacity.html"><span class="detail-num">08</span><span class="detail-title">Shannon Capacity</span><span class="detail-arrow">&rarr;</span></a>
-        <a class="detail-link" href="wireless-comm/09-multiplexing.html"><span class="detail-num">09</span><span class="detail-title">Multiplexing Techniques</span><span class="detail-arrow">&rarr;</span></a>
-        <a class="detail-link" href="wireless-comm/10-spread-spectrum.html"><span class="detail-num">10</span><span class="detail-title">Spread Spectrum &amp; CDMA</span><span class="detail-arrow">&rarr;</span></a>
-        <a class="detail-link" href="wireless-comm/11-equalization.html"><span class="detail-num">11</span><span class="detail-title">Channel Equalization</span><span class="detail-arrow">&rarr;</span></a>
-      </div>
-    </article>
-
-    <article class="course-detail-panel rsp" id="course-rsp">
-      <div class="course-detail-bar"></div>
-      <div class="course-detail-head">
-        <span class="icon">📡</span>
-        <div class="course-detail-copy">
-          <h3>Radar Signal Processing</h3>
-          <div class="course-detail-meta">
-            <span class="count">13 demos</span>
-            <span class="ref">Skolnik &middot; Richards</span>
-          </div>
-        </div>
-      </div>
-      <div class="course-detail-grid">
-        <a class="detail-link" href="radar/01-radar-equation.html"><span class="detail-num">01</span><span class="detail-title">Radar Equation</span><span class="detail-arrow">&rarr;</span></a>
-        <a class="detail-link" href="radar/02-matched-filter.html"><span class="detail-num">02</span><span class="detail-title">Matched Filter</span><span class="detail-arrow">&rarr;</span></a>
-        <a class="detail-link" href="radar/03-fmcw-radar.html"><span class="detail-num">03</span><span class="detail-title">FMCW Radar</span><span class="detail-arrow">&rarr;</span></a>
-        <a class="detail-link" href="radar/04-doppler-effect.html"><span class="detail-num">04</span><span class="detail-title">Doppler Effect</span><span class="detail-arrow">&rarr;</span></a>
-        <a class="detail-link" href="radar/05-ambiguity-function.html"><span class="detail-num">05</span><span class="detail-title">Ambiguity Function</span><span class="detail-arrow">&rarr;</span></a>
-        <a class="detail-link" href="radar/06-cfar.html"><span class="detail-num">06</span><span class="detail-title">CFAR Detection</span><span class="detail-arrow">&rarr;</span></a>
-        <a class="detail-link" href="radar/07-mti-pulse-doppler.html"><span class="detail-num">07</span><span class="detail-title">MTI &amp; Pulse-Doppler</span><span class="detail-arrow">&rarr;</span></a>
-        <a class="detail-link" href="radar/08-beamforming.html"><span class="detail-num">08</span><span class="detail-title">Array Beamforming</span><span class="detail-arrow">&rarr;</span></a>
-        <a class="detail-link" href="radar/09-sar-imaging.html"><span class="detail-num">09</span><span class="detail-title">SAR Imaging</span><span class="detail-arrow">&rarr;</span></a>
-        <a class="detail-link" href="radar/10-rcs-swerling.html"><span class="detail-num">10</span><span class="detail-title">RCS &amp; Swerling Models</span><span class="detail-arrow">&rarr;</span></a>
-        <a class="detail-link" href="radar/11-target-tracking.html"><span class="detail-num">11</span><span class="detail-title">Target Tracking — KF &amp; EKF</span><span class="detail-arrow">&rarr;</span></a>
-        <a class="detail-link" href="radar/12-radar-cube.html"><span class="detail-num">12</span><span class="detail-title">Radar Data Cube</span><span class="detail-arrow">&rarr;</span></a>
-        <a class="detail-link" href="radar/13-real-sentinel1-pipeline.html"><span class="detail-num">13</span><span class="detail-title">Real Sentinel-1 SAR Pipeline</span><span class="detail-arrow">&rarr;</span></a>
-      </div>
-    </article>
-
-    <article class="course-detail-panel dsp" id="course-dsp">
-      <div class="course-detail-bar"></div>
-      <div class="course-detail-head">
-        <span class="icon">∑</span>
-        <div class="course-detail-copy">
-          <h3>DSP &amp; Signal Analysis</h3>
-          <div class="course-detail-meta">
-            <span class="count">3 demos</span>
-            <span class="ref">Haykin &middot; Stoica &middot; Huang</span>
-          </div>
-        </div>
-      </div>
-      <div class="course-detail-grid">
-        <a class="detail-link" href="dsp-signal-analysis/01-adaptive-filtering.html"><span class="detail-num">01</span><span class="detail-title">Adaptive Filtering</span><span class="detail-arrow">&rarr;</span></a>
-        <a class="detail-link" href="dsp-signal-analysis/02-spectral-estimation.html"><span class="detail-num">02</span><span class="detail-title">Spectral Estimation &amp; Chirp-Z</span><span class="detail-arrow">&rarr;</span></a>
-        <a class="detail-link" href="dsp-signal-analysis/03-emd-vmd.html"><span class="detail-num">03</span><span class="detail-title">EMD &amp; VMD Decomposition</span><span class="detail-arrow">&rarr;</span></a>
-      </div>
-    </article>
-    </section>
-  </section>
+<section class="hero">
+<div class="hero-top">
+<h1>Interactive <span>Lecture Demos</span></h1>
+<button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"></button>
 </div>
+</section>
+<div class="section-intro" id="catalog">
+<span class="section-kicker">Course Catalog</span>
+<h2>Browse demos by lecture track</h2>
+</div>
+<section aria-label="Course catalog layout" class="sidebar-layout">
+<aside class="sidebar">
+<div class="sidebar-title">Courses</div>
+<div class="sidebar-links">
+<a class="sidebar-link ss" href="#course-ss"><span class="meta"><strong>Signals and Systems</strong><span>8 demos · Oppenheim &amp; Willsky</span></span><span class="jump-arrow">→</span></a>
+<a class="sidebar-link wc" href="#course-wc"><span class="meta"><strong>Wireless Communication</strong><span>11 demos · Proakis &amp; Salehi</span></span><span class="jump-arrow">→</span></a>
+<a class="sidebar-link rsp" href="#course-rsp"><span class="meta"><strong>Radar Signal Processing</strong><span>12 demos · Skolnik · Richards</span></span><span class="jump-arrow">→</span></a>
 
+</div>
+</aside>
+<section aria-label="Full course demo lists" class="course-detail-shell">
+<article class="course-detail-panel ss" id="course-ss">
+<div class="course-detail-bar"></div>
+<div class="course-detail-head">
+<span class="icon">∿</span>
+<div class="course-detail-copy">
+<h3>Signals and Systems</h3>
+<div class="course-detail-meta">
+<span class="count">8 demos</span>
+<span class="ref">Oppenheim &amp; Willsky</span>
+</div>
+</div>
+</div>
+<div class="course-detail-grid">
+<a class="detail-link" href="signals-and-systems/01-sinusoidal.html"><span class="detail-num">01</span><span class="detail-title">Sinusoidal Signals &amp; Phasors</span><span class="detail-arrow">→</span></a>
+<a class="detail-link" href="signals-and-systems/02-convolution.html"><span class="detail-num">02</span><span class="detail-title">Convolution</span><span class="detail-arrow">→</span></a>
+<a class="detail-link" href="signals-and-systems/03-fourier-series.html"><span class="detail-num">03</span><span class="detail-title">Fourier Series</span><span class="detail-arrow">→</span></a>
+<a class="detail-link" href="signals-and-systems/04-fourier-transform-filtering.html"><span class="detail-num">04</span><span class="detail-title">Fourier Transform &amp; Filtering</span><span class="detail-arrow">→</span></a>
+<a class="detail-link" href="signals-and-systems/05-sampling.html"><span class="detail-num">05</span><span class="detail-title">Sampling &amp; Reconstruction</span><span class="detail-arrow">→</span></a>
+<a class="detail-link" href="signals-and-systems/06-dft.html"><span class="detail-num">06</span><span class="detail-title">DFT &amp; Spectral Analysis</span><span class="detail-arrow">→</span></a>
+<a class="detail-link" href="signals-and-systems/07-z-transform.html"><span class="detail-num">07</span><span class="detail-title">Z-Transform &amp; Digital Filters</span><span class="detail-arrow">→</span></a>
+<a class="detail-link" href="signals-and-systems/08-laplace-transform.html"><span class="detail-num">08</span><span class="detail-title">Laplace Transform &amp; Stability</span><span class="detail-arrow">→</span></a>
+</div>
+</article>
+<article class="course-detail-panel wc" id="course-wc">
+<div class="course-detail-bar"></div>
+<div class="course-detail-head">
+<span class="icon">⌁</span>
+<div class="course-detail-copy">
+<h3>Wireless Communication</h3>
+<div class="course-detail-meta">
+<span class="count">11 demos</span>
+<span class="ref">Proakis &amp; Salehi</span>
+</div>
+</div>
+</div>
+<div class="course-detail-grid">
+<a class="detail-link" href="wireless-comm/01-analog-modulation.html"><span class="detail-num">01</span><span class="detail-title">Analog Modulation</span><span class="detail-arrow">→</span></a>
+<a class="detail-link" href="wireless-comm/02-digital-modulation.html"><span class="detail-num">02</span><span class="detail-title">Digital Modulation &amp; Constellation</span><span class="detail-arrow">→</span></a>
+<a class="detail-link" href="wireless-comm/03-ber-curves.html"><span class="detail-num">03</span><span class="detail-title">BER Curves &amp; Comparison</span><span class="detail-arrow">→</span></a>
+<a class="detail-link" href="wireless-comm/04-pulse-shaping.html"><span class="detail-num">04</span><span class="detail-title">Pulse Shaping &amp; Eye Diagram</span><span class="detail-arrow">→</span></a>
+<a class="detail-link" href="wireless-comm/05-ofdm.html"><span class="detail-num">05</span><span class="detail-title">OFDM</span><span class="detail-arrow">→</span></a>
+<a class="detail-link" href="wireless-comm/06-channel-fading.html"><span class="detail-num">06</span><span class="detail-title">Channel Fading</span><span class="detail-arrow">→</span></a>
+<a class="detail-link" href="wireless-comm/07-link-budget.html"><span class="detail-num">07</span><span class="detail-title">Link Budget</span><span class="detail-arrow">→</span></a>
+<a class="detail-link" href="wireless-comm/08-shannon-capacity.html"><span class="detail-num">08</span><span class="detail-title">Shannon Capacity</span><span class="detail-arrow">→</span></a>
+<a class="detail-link" href="wireless-comm/09-multiplexing.html"><span class="detail-num">09</span><span class="detail-title">Multiplexing Techniques</span><span class="detail-arrow">→</span></a>
+<a class="detail-link" href="wireless-comm/10-spread-spectrum.html"><span class="detail-num">10</span><span class="detail-title">Spread Spectrum &amp; CDMA</span><span class="detail-arrow">→</span></a>
+<a class="detail-link" href="wireless-comm/11-equalization.html"><span class="detail-num">11</span><span class="detail-title">Channel Equalization</span><span class="detail-arrow">→</span></a>
+</div>
+</article>
+<article class="course-detail-panel rsp" id="course-rsp">
+<div class="course-detail-bar"></div>
+<div class="course-detail-head">
+<span class="icon">📡</span>
+<div class="course-detail-copy">
+<h3>Radar Signal Processing</h3>
+<div class="course-detail-meta">
+<span class="count">12 demos</span>
+<span class="ref">Skolnik · Richards</span>
+</div>
+</div>
+</div>
+<div class="course-detail-grid">
+<a class="detail-link" href="radar/01-radar-equation.html"><span class="detail-num">01</span><span class="detail-title">Radar Equation</span><span class="detail-arrow">→</span></a>
+<a class="detail-link" href="radar/02-matched-filter.html"><span class="detail-num">02</span><span class="detail-title">Matched Filter</span><span class="detail-arrow">→</span></a>
+<a class="detail-link" href="radar/03-fmcw-radar.html"><span class="detail-num">03</span><span class="detail-title">FMCW Radar</span><span class="detail-arrow">→</span></a>
+<a class="detail-link" href="radar/04-doppler-effect.html"><span class="detail-num">04</span><span class="detail-title">Doppler Effect</span><span class="detail-arrow">→</span></a>
+<a class="detail-link" href="radar/05-ambiguity-function.html"><span class="detail-num">05</span><span class="detail-title">Ambiguity Function</span><span class="detail-arrow">→</span></a>
+<a class="detail-link" href="radar/06-cfar.html"><span class="detail-num">06</span><span class="detail-title">CFAR Detection</span><span class="detail-arrow">→</span></a>
+<a class="detail-link" href="radar/07-mti-pulse-doppler.html"><span class="detail-num">07</span><span class="detail-title">MTI &amp; Pulse-Doppler</span><span class="detail-arrow">→</span></a>
+<a class="detail-link" href="radar/08-beamforming.html"><span class="detail-num">08</span><span class="detail-title">Array Beamforming</span><span class="detail-arrow">→</span></a>
+<a class="detail-link" href="radar/09-sar-imaging.html"><span class="detail-num">09</span><span class="detail-title">SAR Imaging</span><span class="detail-arrow">→</span></a>
+<a class="detail-link" href="radar/10-rcs-swerling.html"><span class="detail-num">10</span><span class="detail-title">RCS &amp; Swerling Models</span><span class="detail-arrow">→</span></a>
+<a class="detail-link" href="radar/11-target-tracking.html"><span class="detail-num">11</span><span class="detail-title">Target Tracking — KF &amp; EKF</span><span class="detail-arrow">→</span></a>
+<a class="detail-link" href="radar/12-radar-cube.html"><span class="detail-num">12</span><span class="detail-title">Radar Data Cube</span><span class="detail-arrow">→</span></a>
+
+</div>
+</article>
+
+</section>
+</section>
+</div>
 <div class="footer">
-  REMI Lab interactive lecture demos &middot; <a href="https://remilab.cnu.ac.kr">remilab.cnu.ac.kr</a>
+  REMI Lab interactive lecture demos · <a href="https://remilab.cnu.ac.kr">remilab.cnu.ac.kr</a>
 </div>
-
 </body>
 </html>
