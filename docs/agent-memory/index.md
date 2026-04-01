@@ -5,6 +5,8 @@
 - `course-sites.md`
 - `deploy-boundaries.md`
 - `do-not-repeat.md`
+- `signals-systems-roadmap.md`
+- `radar-signal-processing-roadmap.md`
 
 ## Boundary
 - Use these files for stable lecture-repo knowledge.

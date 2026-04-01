@@ -12,14 +12,15 @@ This file governs `teaching/lecture/` unless a deeper file overrides it.
 
 ## Project posture
 - This repo is a lecture-authoring and lecture-delivery workspace, not just a static asset dump.
-- `grad-radar-ai/` is an important subproject with deeper local guidance; respect its more specific rules when working inside it.
+- Large course repos such as `../grad-radar-ai/` are separate sibling repos now; do not treat them as nested subprojects of `teaching/lecture/`.
+- Interactive labs content belongs in the sibling repo `../remilab-labs/`, not under this repo.
 
 ## Mandatory discipline
 - Keep authoring sources, generated lecture assets, and deployed course-site assumptions aligned.
-- Preserve the distinction between general lecture repo concerns and subproject-specific course-site concerns.
+- Preserve the distinction between general lecture repo concerns and sibling course-repo concerns.
 
 ## Safety
-- Do not overwrite deployed lecture sites without checking the subproject’s own deploy discipline.
+- Do not overwrite deployed lecture sites without checking the target course repo’s own deploy discipline.
 - Do not treat generated visual assets as detached from their source scripts.
 
 ## Verification
